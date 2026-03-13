@@ -62,11 +62,9 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// وەرگرتنی ڕێکەوتی ئەمڕۆ بە فۆرماتی دروست بەبێ کێشەی Timezone
 function getLocalISODate(dateObj) {
   const offset = dateObj.getTimezoneOffset() * 60000;
-  const localISOTime = (new Date(dateObj.getTime() - offset)).toISOString().split('T')[0];
-  return localISOTime;
+  return (new Date(dateObj.getTime() - offset)).toISOString().split('T')[0];
 }
 
 function setTodayDate() {
@@ -143,9 +141,8 @@ window.saveEntry = async function () {
     msg.textContent = "⚠️ تکایە هەموو خانەکان پڕبکەرەوە"; return;
   }
   
-  // دڵنیابوونەوە لە ڕێکەوتی دروست بۆ پاشکەوتکردن
-  const parts = dateVal.split('-'); // ["2026", "03", "11"]
-  const dateObj = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); // دانانی کاتژمێر 12ی نیوەڕۆ بۆ دوورکەوتنەوە لە گۆڕانی ڕۆژ بەهۆی timezone
+  const parts = dateVal.split('-');
+  const dateObj = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
   
   let staffSimpleName = currentUser.email.toLowerCase().split('@')[0];
 
@@ -313,7 +310,7 @@ window.exportDailyPDF = async function () {
 };
 
 // ════════════════════════════════
-//  بەشی ئاماری هەفتانە (وردەکاری بۆ هەموو ڕێکەوتەکان)
+//  بەشی ئاماری هەفتانە
 // ════════════════════════════════
 async function fetchWeekly() {
   return getDocs(query(collection(db, "entries"), where("weekNumber", "==", getWeekNumber(new Date()))));
@@ -326,8 +323,6 @@ window.loadWeekly = async function () {
     return;
   }
 
-  // بۆ خشتەی پێشاندانەکە دەتوانین تەنها کۆی گشتی یان وردەکاری دانێین، 
-  // لێرەدا کۆی گشتی هەر کارمەندێک دادەنێین بۆ شاشەکە وەک پێشتر تا زۆر نەبێت
   const totals = {};
   snap.forEach(d => {
     const x = d.data();
@@ -348,11 +343,9 @@ window.exportWeeklyExcel = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
-  // داواکاری تۆ: ئەکسلی هەفتانە ناوی یوزەر، بەروار، دانە، هەفتەکە، و کۆی گشتی تێدابێت
   const data = [["کارمەند", "ڕێکەوت", "ژمارەی نەخۆش", "ژمارەی هەفتە"]];
   let grandTotal = 0;
 
-  // هەموو تۆمارەکان یەک بە یەک دەخەینە ناو ئەکسڵەکە
   snap.forEach(d => {
     const x = d.data();
     data.push([
@@ -364,7 +357,6 @@ window.exportWeeklyExcel = async function () {
     grandTotal += x.count;
   });
 
-  // لە کۆتاییدا ڕیزی کۆی گشتی
   data.push(["کۆی گشتی", "-", grandTotal, "-"]];
 
   const wb = XLSX.utils.book_new();
