@@ -1,0 +1,32 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+#loginPage { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.login-card { width: 360px; text-align: center; }
+.login-card h1 { margin-bottom: 20px; color: #2c3e50; }
+#loginError { color: red; margin-top: 8px; }
+
+.topbar { background: #2c3e50; color: white; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+.topbar h1 { font-size: 18px; }
+.logout-btn { background: #e74c3c; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; width: auto; display: inline-block; margin-right: 10px; }
+
+.card { background: white; border-radius: 12px; padding: 20px; margin: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+h2 { color: #2c3e50; margin-bottom: 12px; }
+
+label { display: block; margin-top: 10px; font-weight: bold; color: #555; }
+input, select { width: 100%; padding: 10px; margin-top: 4px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; }
+
+button { display: block; width: 100%; margin-top: 12px; padding: 11px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+button:hover { background: #2980b9; }
+
+.button-group { display: flex; gap: 10px; margin-bottom: 4px; }
+.button-group button { flex: 1; width: auto; margin-top: 0; }
+.btn-excel { background: #1d6f42 !important; }
+.btn-pdf { background: #e74c3c !important; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th { background: #3498db; color: white; padding: 10px; }
+td { padding: 9px; border-bottom: 1px solid #eee; text-align: center; }
+.total-row td { font-weight: bold; background: #eaf4fb; }
+#statusMsg { margin-top: 8px; font-weight: bold; }
+.admin-panel { background-color: #fff9f9; }

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ئامارەکانی نەخۆشان</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+  <!-- پەیجی لۆگین -->
+  <div id="loginPage">
+    <div class="card login-card">
+      <h1>🏥 چوونەژوورەوە</h1>
+      <label>ئیمەیل:</label>
+      <input type="email" id="loginEmail" placeholder="ناوی بەکارهێنەر">
+      <label>پاسوۆرد:</label>
+      <input type="password" id="loginPassword" placeholder="••••••••">
+      <button onclick="login()">چوونەژوورەوە</button>
+      <p id="loginError"></p>
+    </div>
+  </div>
+
+  <!-- داشبۆرد -->
+  <div id="dashboard" style="display:none">
+
+    <div class="topbar">
+      <h1>📋 سیستەمی تۆمارکردنی نەخۆشان</h1>
+      <div>
+        <span id="currentUserName"></span>
+        <button class="logout-btn" onclick="logout()">دەرچوون 🚪</button>
+      </div>
+    </div>
+
+    <!-- بەشی تایبەت بە بەڕێوەبەر (شاراوەیە مەگەر بەڕێوەبەر لۆگین بکات) -->
+    <section class="card admin-panel" id="adminSection" style="display:none; border: 2px solid #e74c3c;">
+      <h2>👑 بەشی بەڕێوەبەر: دروستکردنی کارمەندی نوێ</h2>
+      <label>ئیمەیلی کارمەند:</label>
+      <input type="email" id="newStaffEmail" placeholder="staff@clinic.com">
+      <label>پاسوۆردی کارمەند (لانی کەم ٦ پیت):</label>
+      <input type="password" id="newStaffPassword" placeholder="123456">
+      <button onclick="createStaff()" style="background:#e74c3c;">➕ دروستکردنی ئەکاونت</button>
+      <p id="createStaffMsg"></p>
+    </section>
+
+    <!-- فۆرمی تۆمارکردن -->
+    <section class="card">
+      <h2>➕ تۆماری نوێ زیاد بکە</h2>
+      <label>ژمارەی نەخۆشان:</label>
+      <input type="number" id="patientCount" placeholder="0" min="0">
+      <label>ڕێکەوت:</label>
+      <input type="date" id="entryDate">
+      <button onclick="saveEntry()">💾 پاشکەوتکردن</button>
+      <p id="statusMsg"></p>
+    </section>
+
+    <!-- ئاماری ئەمڕۆ -->
+    <section class="card">
+      <h2>📅 ئاماری ئەمڕۆ</h2>
+      <div class="button-group">
+        <button onclick="loadDaily()">نیشان بدە</button>
+        <button onclick="exportDailyExcel()" class="btn-excel">📥 Excel</button>
+        <button onclick="exportDailyPDF()" class="btn-pdf">📄 PDF</button>
+      </div>
+      <div id="dailyOutput"></div>
+    </section>
+
+    <!-- ئاماری هەفتانە -->
+    <section class="card">
+      <h2>📊 ئاماری هەفتانە</h2>
+      <div class="button-group">
+        <button onclick="loadWeekly()">نیشان بدە</button>
+        <button onclick="exportWeeklyExcel()" class="btn-excel">📥 Excel</button>
+        <button onclick="exportWeeklyPDF()" class="btn-pdf">📄 PDF</button>
+      </div>
+      <div id="weeklyOutput"></div>
+      <canvas id="weeklyChart" height="100"></canvas>
+    </section>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
