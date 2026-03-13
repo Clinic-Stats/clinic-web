@@ -22,7 +22,7 @@ enableIndexedDbPersistence(db).catch(err => console.log("Offline error:", err.co
 
 let currentUser  = null;
 let chartInstance = null;
-let isCurrentUserAdmin = false; // گۆڕاوێک بۆ هەڵگرتنی ڕۆڵی یوزەرەکە
+let isCurrentUserAdmin = false;
 
 // ════════════════════════════════
 //  بەشی لۆگین و چاودێریکردن
@@ -37,7 +37,6 @@ onAuthStateChanged(auth, async (user) => {
     let displayName = userEmail.split('@')[0];
     document.getElementById("currentUserName").textContent = "👤 " + displayName;
 
-    // پشکنین دەکەین بزانین ئەم کەسە ئەدمینە یان نا و خەزنی دەکەین
     isCurrentUserAdmin = false;
     try {
       const userDoc = await getDoc(doc(db, "users", userEmail));
@@ -63,10 +62,17 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// وەرگرتنی ڕێکەوتی ئەمڕۆ بە فۆرماتی دروست بەبێ کێشەی Timezone
+function getLocalISODate(dateObj) {
+  const offset = dateObj.getTimezoneOffset() * 60000;
+  const localISOTime = (new Date(dateObj.getTime() - offset)).toISOString().split('T')[0];
+  return localISOTime;
+}
+
 function setTodayDate() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById("entryDate").value = today;
-  document.getElementById("dailyFilterDate").value = today;
+  const todayStr = getLocalISODate(new Date());
+  document.getElementById("entryDate").value = todayStr;
+  document.getElementById("dailyFilterDate").value = todayStr;
 }
 
 window.login = async function () {
@@ -136,7 +142,10 @@ window.saveEntry = async function () {
   if (isNaN(count) || !dateVal) {
     msg.textContent = "⚠️ تکایە هەموو خانەکان پڕبکەرەوە"; return;
   }
-  const dateObj = new Date(dateVal);
+  
+  // دڵنیابوونەوە لە ڕێکەوتی دروست بۆ پاشکەوتکردن
+  const parts = dateVal.split('-'); // ["2026", "03", "11"]
+  const dateObj = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); // دانانی کاتژمێر 12ی نیوەڕۆ بۆ دوورکەوتنەوە لە گۆڕانی ڕۆژ بەهۆی timezone
   
   let staffSimpleName = currentUser.email.toLowerCase().split('@')[0];
 
@@ -166,26 +175,24 @@ async function fetchDailyForCurrentUser() {
     return null;
   }
 
-  const selectedDate = new Date(dateVal);
-  selectedDate.setHours(0,0,0,0);
-  const nextDay = new Date(selectedDate);
-  nextDay.setDate(selectedDate.getDate() + 1);
+  const parts = dateVal.split('-');
+  const selectedDate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
+  const nextDay = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
 
   const staffName = currentUser.email.toLowerCase().split('@')[0];
 
-  // ئەگەر ئەدمینە، هیچی مەرجی ناو (staff) دانانێین تا هی هەموویان بهێنێت
   if (isCurrentUserAdmin) {
     return getDocs(query(
       collection(db, "entries"),
       where("date", ">=", Timestamp.fromDate(selectedDate)),
-      where("date", "<", Timestamp.fromDate(nextDay))
+      where("date", "<=", Timestamp.fromDate(nextDay))
     ));
   } else {
     return getDocs(query(
       collection(db, "entries"),
       where("staff", "==", staffName),
       where("date", ">=", Timestamp.fromDate(selectedDate)),
-      where("date", "<", Timestamp.fromDate(nextDay))
+      where("date", "<=", Timestamp.fromDate(nextDay))
     ));
   }
 }
@@ -209,7 +216,6 @@ window.loadDaily = async function () {
     total += data.count;
     
     let actionButtons = "";
-    // ئەگەر ئەدمینە یان خاوەنی داتاکەیە با بتوانێت بیسڕێتەوە
     if (isCurrentUserAdmin || data.staff === currentUser.email.toLowerCase().split('@')[0]) {
       actionButtons = `
         <button onclick="editEntry('${docId}', ${data.count})" style="font-size:12px; padding:4px 8px;">✏️ گۆڕین</button>
@@ -307,7 +313,7 @@ window.exportDailyPDF = async function () {
 };
 
 // ════════════════════════════════
-//  بەشی ئاماری هەفتانە
+//  بەشی ئاماری هەفتانە (وردەکاری بۆ هەموو ڕێکەوتەکان)
 // ════════════════════════════════
 async function fetchWeekly() {
   return getDocs(query(collection(db, "entries"), where("weekNumber", "==", getWeekNumber(new Date()))));
@@ -320,6 +326,8 @@ window.loadWeekly = async function () {
     return;
   }
 
+  // بۆ خشتەی پێشاندانەکە دەتوانین تەنها کۆی گشتی یان وردەکاری دانێین، 
+  // لێرەدا کۆی گشتی هەر کارمەندێک دادەنێین بۆ شاشەکە وەک پێشتر تا زۆر نەبێت
   const totals = {};
   snap.forEach(d => {
     const x = d.data();
@@ -340,25 +348,28 @@ window.exportWeeklyExcel = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
-  const totals = {};
-  snap.forEach(d => {
-    const x = d.data();
-    totals[x.staff] = (totals[x.staff] || 0) + x.count;
-  });
-
-  const data = [["کارمەند", "کۆی نەخۆشان"]];
+  // داواکاری تۆ: ئەکسلی هەفتانە ناوی یوزەر، بەروار، دانە، هەفتەکە، و کۆی گشتی تێدابێت
+  const data = [["کارمەند", "ڕێکەوت", "ژمارەی نەخۆش", "ژمارەی هەفتە"]];
   let grandTotal = 0;
 
-  for (const [staff, count] of Object.entries(totals)) {
-    data.push([staff, count]);
-    grandTotal += count;
-  }
+  // هەموو تۆمارەکان یەک بە یەک دەخەینە ناو ئەکسڵەکە
+  snap.forEach(d => {
+    const x = d.data();
+    data.push([
+      x.staff, 
+      x.date.toDate().toLocaleDateString("en-GB"), 
+      x.count, 
+      x.weekNumber
+    ]);
+    grandTotal += x.count;
+  });
 
-  data.push(["کۆی گشتی", grandTotal]);
+  // لە کۆتاییدا ڕیزی کۆی گشتی
+  data.push(["کۆی گشتی", "-", grandTotal, "-"]];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "هەفتانە");
-  XLSX.writeFile(wb, "weekly_stats.xlsx");
+  XLSX.writeFile(wb, "weekly_stats_detailed.xlsx");
 };
 
 window.exportWeeklyPDF = async function () {
