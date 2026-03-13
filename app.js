@@ -4,7 +4,7 @@ import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
-// 🔴 ئەمانە بگۆڕە بە زانیارییەکانی Firebase ی خۆت کە کۆپیت کردبوون
+// 🔴 ئەمانە بگۆڕە بە زانیارییەکانی Firebase ی خۆت کە پێشتر کۆپیت کردبوون
 const firebaseConfig = {
   apiKey: "AIzaSyBY15gxSoGhtx1LTRzfC_P9Jz_a2avUaLg",
   authDomain: "clinic-stats.firebaseapp.com",
@@ -14,12 +14,11 @@ const firebaseConfig = {
   appId: "1:122761541077:web:967c2618895fe57d51b95c"
 };
 
-
 const app  = initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 const auth = getAuth(app);
 
-// چالاککردنی دۆخی ئۆفلاین بۆ ئایفۆن
+// چالاککردنی دۆخی ئۆفلاین بۆ مۆبایل
 enableIndexedDbPersistence(db).catch(err => console.log("Offline error:", err.code));
 
 let currentUser  = null;
@@ -33,7 +32,10 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     document.getElementById("loginPage").style.display = "none";
     document.getElementById("dashboard").style.display = "block";
-    document.getElementById("currentUserName").textContent = "👤 " + user.email;
+    
+    // ناوی سادە پیشان دەدات لەبری ئیمەیلە درێژەکە
+    let displayName = user.email.split('@')[0];
+    document.getElementById("currentUserName").textContent = "👤 " + displayName;
 
     // پشکنین دەکات بزانێت ئایا ئەم کەسە بەڕێوەبەرە یان نا
     const userDoc = await getDoc(doc(db, "users", user.email));
@@ -50,12 +52,18 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 window.login = async function () {
-  const email = document.getElementById("loginEmail").value;
+  let email = document.getElementById("loginEmail").value.trim().toLowerCase();
   const pass  = document.getElementById("loginPassword").value;
+  
+  // فێڵی ناوە سادەکان: زیادکردنی دۆمەینەکە بە ئۆتۆماتیکی ئەگەر نەیبوو
+  if (email && !email.includes('@')) {
+    email = email + "@clinic.com";
+  }
+
   try {
     await signInWithEmailAndPassword(auth, email, pass);
   } catch {
-    document.getElementById("loginError").textContent = "❌ ئیمەیل یان پاسوۆرد هەڵەیە";
+    document.getElementById("loginError").textContent = "❌ ناو یان پاسوۆرد هەڵەیە";
   }
 };
 
@@ -67,13 +75,18 @@ window.logout = async function () {
 //  بەشی بەڕێوەبەر: دروستکردنی کارمەند
 // ════════════════════════════════
 window.createStaff = async function () {
-  const email = document.getElementById("newStaffEmail").value;
+  let email = document.getElementById("newStaffEmail").value.trim().toLowerCase();
   const pass = document.getElementById("newStaffPassword").value;
   const msg = document.getElementById("createStaffMsg");
 
   if (!email || pass.length < 6) {
-    msg.textContent = "⚠️ ئیمەیل بنووسە و پاسوۆرد نابێت لە ٦ پیت کەمتر بێت.";
+    msg.textContent = "⚠️ ناو بنووسە و پاسوۆرد نابێت لە ٦ پیت کەمتر بێت.";
     msg.style.color = "red"; return;
+  }
+
+  // فێڵی ناوە سادەکان
+  if (!email.includes('@')) {
+    email = email + "@clinic.com";
   }
 
   msg.textContent = "⏳ چاوەڕێ بکە...";
@@ -89,9 +102,7 @@ window.createStaff = async function () {
       createdAt: Timestamp.now()
     });
 
-    // کاتێک کارمەند دروست دەکرێت، Firebase بەخۆی دەچێتە ناو ئەکاونتە نوێیەکە.
-    // بۆیە بەڕێوەبەرەکە فڕێ دەداتە دەرەوە و پێویستە سەرلەنوێ لۆگین بکاتەوە.
-    alert("✅ ئەکاونتی کارمەندەکە بە سەرکەوتوویی دروستکرا!\n\nلەبەر هۆکاری ئاسایش، سیستەمەکە ئێستا لۆگئاوت دەبێت. تکایە دووبارە بە ئەکاونتی بەڕێوەبەر لۆگین بکەرەوە.");
+    alert("✅ ئەکاونتی کارمەندەکە بە سەرکەوتوویی دروستکرا!\n\nسیستەمەکە ئێستا لۆگئاوت دەبێت. تکایە دووبارە بە ئەکاونتی بەڕێوەبەر لۆگین بکەرەوە.");
     await signOut(auth);
 
   } catch (e) {
@@ -113,9 +124,13 @@ window.saveEntry = async function () {
     msg.textContent = "⚠️ تکایە هەموو خانەکان پڕبکەرەوە"; return;
   }
   const dateObj = new Date(dateVal);
+  
+  // ناوە سادەکەی کارمەندەکە وەردەگرین بۆ ئەوەی لە خشتەکاندا جوان بێت
+  let staffSimpleName = currentUser.email.split('@')[0];
+
   try {
     await addDoc(collection(db, "entries"), {
-      staff      : currentUser.email,
+      staff      : staffSimpleName, // تەنها ناوە سادەکە خەزن دەکات
       count      : count,
       date       : Timestamp.fromDate(dateObj),
       weekNumber : getWeekNumber(dateObj),
@@ -130,7 +145,7 @@ window.saveEntry = async function () {
 };
 
 // ════════════════════════════════
-//  فەنکشنەکانی ئامار و خشتەکان (وەک خۆیان ماونەتەوە)
+//  فەنکشنەکانی ئامار و خشتەکان
 // ════════════════════════════════
 async function fetchToday() {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -163,13 +178,23 @@ window.exportWeeklyPDF   = async () => { const s=await fetchWeekly(); if(s.empty
 
 function buildTable(snap) {
   let html="<table><tr><th>کارمەند</th><th>نەخۆش</th><th>ڕێکەوت</th></tr>",total=0;
-  snap.forEach(d=>{const x=d.data();html+=`<tr><td>${x.staff}</td><td>${x.count}</td><td>${x.date.toDate().toLocaleDateString("en-GB")}</td></tr>`;total+=x.count;});
+  snap.forEach(d=>{
+    const x=d.data();
+    // ئەگەر بە هەڵە ئیمەیلی درێژ خەزن کرابوو، لێرەدا کورتی دەکەینەوە بۆ پیشاندان
+    let displayName = x.staff.includes('@') ? x.staff.split('@')[0] : x.staff;
+    html+=`<tr><td>${displayName}</td><td>${x.count}</td><td>${x.date.toDate().toLocaleDateString("en-GB")}</td></tr>`;
+    total+=x.count;
+  });
   return html+`<tr class="total-row"><td>کۆی گشتی</td><td>${total}</td><td>-</td></tr></table>`;
 }
 
 function exportExcel(snap,filename,sheetName) {
   const data=[["کارمەند","ژمارەی نەخۆش","ڕێکەوت","هەفتە"]];
-  snap.forEach(d=>{const x=d.data();data.push([x.staff,x.count,x.date.toDate().toLocaleDateString("en-GB"),x.weekNumber]);});
+  snap.forEach(d=>{
+    const x=d.data();
+    let displayName = x.staff.includes('@') ? x.staff.split('@')[0] : x.staff;
+    data.push([displayName,x.count,x.date.toDate().toLocaleDateString("en-GB"),x.weekNumber]);
+  });
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),sheetName);
   XLSX.writeFile(wb,filename);
@@ -180,7 +205,11 @@ function exportPDF(snap,filename,title) {
   const doc=new jsPDF();
   doc.setFontSize(14); doc.text(title,14,15);
   const rows=[];
-  snap.forEach(d=>{const x=d.data();rows.push([x.staff,x.count,x.date.toDate().toLocaleDateString("en-GB"),x.weekNumber]);});
+  snap.forEach(d=>{
+    const x=d.data();
+    let displayName = x.staff.includes('@') ? x.staff.split('@')[0] : x.staff;
+    rows.push([displayName,x.count,x.date.toDate().toLocaleDateString("en-GB"),x.weekNumber]);
+  });
   doc.autoTable({head:[["Staff","Patients","Date","Week"]],body:rows,startY:25,headStyles:{fillColor:[52,152,219]},styles:{fontSize:9}});
   doc.save(filename);
 }
