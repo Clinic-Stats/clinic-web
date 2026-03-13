@@ -4,7 +4,7 @@ import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
-// 🔴 ئەمانە بگۆڕە بە زانیارییەکانی Firebase ی خۆت
+// 🔴 زانیارییەکانی خۆت لێرە دابنێ
 const firebaseConfig = {
   apiKey: "AIzaSyBY15gxSoGhtx1LTRzfC_P9Jz_a2avUaLg",
   authDomain: "clinic-stats.firebaseapp.com",
@@ -92,6 +92,9 @@ window.logout = async function () {
   await signOut(auth);
 };
 
+// ════════════════════════════════
+//  بەشی بەڕێوەبەر
+// ════════════════════════════════
 window.createStaff = async function () {
   let email = document.getElementById("newStaffEmail").value.trim().toLowerCase();
   const pass = document.getElementById("newStaffPassword").value;
@@ -125,6 +128,9 @@ window.createStaff = async function () {
   }
 };
 
+// ════════════════════════════════
+//  بەشی پاشکەوتکردنی داتا
+// ════════════════════════════════
 window.saveEntry = async function () {
   if (!currentUser) return;
   const count   = parseInt(document.getElementById("patientCount").value);
@@ -156,6 +162,9 @@ window.saveEntry = async function () {
   }
 };
 
+// ════════════════════════════════
+//  بەشی ئاماری ڕۆژانە
+// ════════════════════════════════
 async function fetchDailyForCurrentUser() {
   const dateVal = document.getElementById("dailyFilterDate").value;
   if (!dateVal) {
@@ -300,6 +309,9 @@ window.exportDailyPDF = async function () {
   doc.save(`daily_${document.getElementById("dailyFilterDate").value}.pdf`);
 };
 
+// ════════════════════════════════
+//  بەشی ئاماری هەفتانە
+// ════════════════════════════════
 async function fetchWeekly() {
   return getDocs(query(collection(db, "entries"), where("weekNumber", "==", getWeekNumber(new Date()))));
 }
@@ -383,6 +395,9 @@ window.exportWeeklyPDF = async function () {
   pdfDoc.save("weekly_stats.pdf");
 };
 
+// ════════════════════════════════
+//  بەشی وێنەکێشانی هێڵکاری
+// ════════════════════════════════
 function drawChart(labels, data) {
   const ctx = document.getElementById("weeklyChart").getContext("2d");
   if (chartInstance) chartInstance.destroy();
@@ -410,11 +425,3 @@ function getWeekNumber(d) {
   const w1 = new Date(date.getFullYear(), 0, 4);
   return 1 + Math.round(((date - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
 }
-
-// زیادکردنی ڕووداو (Event Listener) بۆ دڵنیابوون لەوەی دوگمەکە کار دەکات بێ کێشە
-document.addEventListener("DOMContentLoaded", () => {
-    const loginBtn = document.querySelector("#loginPage button");
-    if(loginBtn) {
-        loginBtn.addEventListener("click", window.login);
-    }
-});
