@@ -23,7 +23,7 @@ enableIndexedDbPersistence(db).catch(err => console.log("Offline error:", err.co
 let currentUser  = null;
 let chartInstance = null;
 let isCurrentUserAdmin = false;
-let currentWeekOffset = 0; // گۆڕاو بۆ دیاریکردنی هەفتە (0=ئەم هەفتەیە، -1=هەفتەی پێشوو)
+let currentWeekOffset = 0; 
 
 // ════════════════════════════════
 //  بەشی لۆگین و چاودێریکردن
@@ -55,7 +55,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     setTodayDate();
-    updateWeekLabel(); // نوێکردنەوەی نووسینی هەفتەکە لەگەڵ ڕێکەوتەکان
+    updateWeekLabel(); 
     loadWeekly(); 
   } else {
     currentUser = null;
@@ -144,6 +144,25 @@ const createStaff = async function () {
 };
 
 // ════════════════════════════════
+// بەشی دوگمەی + و -
+// ════════════════════════════════
+const incrementPatientCount = function() {
+    const input = document.getElementById("patientCount");
+    let val = parseInt(input.value);
+    if(isNaN(val)) val = 0;
+    input.value = val + 1;
+};
+
+const decrementPatientCount = function() {
+    const input = document.getElementById("patientCount");
+    let val = parseInt(input.value);
+    if(isNaN(val)) val = 0;
+    if(val > 0) {
+        input.value = val - 1;
+    }
+};
+
+// ════════════════════════════════
 //  بەشی پاشکەوتکردنی داتا
 // ════════════════════════════════
 const saveEntry = async function () {
@@ -170,7 +189,7 @@ const saveEntry = async function () {
     });
     msg.textContent = "✅ بە سەرکەوتوویی پاشکەوت کرا!";
     msg.style.color = "green";
-    document.getElementById("patientCount").value = "";
+    document.getElementById("patientCount").value = "0"; // ڕیفڕێشکردنی ژمارەکە بۆ سفر
     
     loadWeekly();
   } catch (e) {
@@ -217,7 +236,7 @@ const loadDaily = async function () {
 
   const output = document.getElementById("dailyOutput");
   if (snap.empty) {
-    output.innerHTML = "<p>هیچ تۆمارێک نییە بۆ ئەم ڕۆژە</p>";
+    output.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە بۆ ئەم ڕۆژە</p>";
     return;
   }
 
@@ -232,15 +251,15 @@ const loadDaily = async function () {
     let actionButtons = "";
     if (isCurrentUserAdmin || data.staff === currentUser.email.toLowerCase().split('@')[0]) {
       actionButtons = `
-        <button onclick="editEntry('${docId}', ${data.count})" style="font-size:12px; padding:4px 8px;">✏️ گۆڕین</button>
-        <button onclick="deleteEntry('${docId}')" style="font-size:12px; padding:4px 8px; background:#e74c3c;">🗑️ سڕینەوە</button>
+        <button onclick="editEntry('${docId}', ${data.count})" style="font-size:12px; padding:4px 8px;">✏️</button>
+        <button onclick="deleteEntry('${docId}')" style="font-size:12px; padding:4px 8px; background:#e74c3c;">🗑️</button>
       `;
     }
 
     html += `<tr>
       <td>${data.staff}</td>
       <td>${data.count}</td>
-      <td>${data.date.toDate().toLocaleDateString("en-GB")}</td>
+      <td style="direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
       <td>${actionButtons}</td>
     </tr>`;
   });
@@ -332,13 +351,11 @@ const exportDailyPDF = async function () {
 //  بەشی ئاماری هەفتانە بەپێی دوگمەکان
 // ════════════════════════════════
 
-// فەنکشن بۆ هێنانی یەکەم ڕۆژ و کۆتا ڕۆژی هەفتەی دیاریکراو
 function getWeekDateRange(offset) {
   const d = new Date();
-  d.setDate(d.getDate() + (offset * 7)); // چوون بۆ هەفتەی مەبەست
+  d.setDate(d.getDate() + (offset * 7)); 
   
   const day = d.getDay();
-  // گەر ڕۆژی یەکشەممە سەرەتای هەفتە بێت، ئەوا یەکشەممە = 0
   const diffToSunday = d.getDate() - day; 
   
   const firstDay = new Date(d.setDate(diffToSunday));
@@ -352,7 +369,6 @@ function getWeekDateRange(offset) {
   return `${formatDate(firstDay)} بۆ ${formatDate(lastDay)}`;
 }
 
-// فەنکشن بۆ نوێکردنەوەی نووسینی سەرەوەی خشتەکە
 function updateWeekLabel() {
   let label = document.getElementById("weekLabelLabel");
   if (!label) return;
@@ -373,14 +389,13 @@ function updateWeekLabel() {
     mainText = currentWeekOffset + " هەفتەی داهاتوو";
   }
   
-  // شێوازی نووسینەکە: ئەم هەفتەیە (هەفتەی 11) - [ 15/3/2026 بۆ 21/3/2026 ]
   label.innerHTML = `${mainText} (هەفتەی ${targetWkNum}) <br><span style="font-size: 0.85em; font-weight: normal; color: #555;">[ لە ${dateRange} ]</span>`;
 }
 
 const changeWeek = function(direction) {
   currentWeekOffset += direction;
   updateWeekLabel();
-  loadWeekly(); // ڕاستەوخۆ داتاکە نوێ بکەرەوە
+  loadWeekly(); 
 };
 
 function getTargetWeekNumber() {
@@ -516,6 +531,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", toggleAdminForm);
     if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", createStaff);
     
+    // دوگمەکانی کەم و زیادکردن
+    if(document.getElementById("btnPlus")) document.getElementById("btnPlus").addEventListener("click", incrementPatientCount);
+    if(document.getElementById("btnMinus")) document.getElementById("btnMinus").addEventListener("click", decrementPatientCount);
+
     if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", saveEntry);
     
     if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", loadDaily);

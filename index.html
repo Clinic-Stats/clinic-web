@@ -38,8 +38,6 @@
     <!-- بەشی بەڕێوەبەر -->
     <section class="card admin-panel" id="adminSection" style="display:none; border: 2px solid #e74c3c;">
       <h2>بەڕێوەبردن</h2>
-      
-      <!-- دوگمەی کردنەوەی فۆرمی کارمەند -->
       <button id="toggleAdminBtn" style="background:#2c3e50; margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
       
       <div id="adminFormWrapper" style="display:none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
@@ -53,37 +51,47 @@
     </section>
 
     <!-- بەشی داخڵکردنی داتا -->
-    <section class="card">
+    <section class="card" style="text-align: center;">
       <h2>تۆمارکردنی نەخۆش</h2>
-      <label>ژمارەی نەخۆش:</label>
-      <input type="number" id="patientCount" placeholder="0" min="0">
+      
+      <label style="margin-top: 15px;">ژمارەی نەخۆش:</label>
+      <!-- بەشی دوگمەکانی زیادکردن و کەمکردنەوە -->
+      <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 15px; direction: ltr;">
+        <button id="btnMinus" type="button" style="width: 45px; height: 45px; margin: 0; padding: 0; font-size: 24px; font-weight: bold; background-color: #e74c3c; border-radius: 8px;">-</button>
+        <input type="number" id="patientCount" placeholder="0" min="0" style="width: 80px !important; height: 45px; margin: 0; padding: 5px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 8px; border: 1px solid #ccc;">
+        <button id="btnPlus" type="button" style="width: 45px; height: 45px; margin: 0; padding: 0; font-size: 24px; font-weight: bold; background-color: #2ecc71; border-radius: 8px;">+</button>
+      </div>
+
       <label>ڕێکەوت:</label>
-      <input type="date" id="entryDate" style="text-align: right; font-size: 1.1em; padding: 12px; font-weight: bold; width: 100%; box-sizing: border-box;">
-      <button id="btnSaveEntry">پاشکەوتکردن</button>
+      <!-- بچووککردنەوەی خانەی ڕێکەوت -->
+      <input type="date" id="entryDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc;">
+      
+      <button id="btnSaveEntry" style="width: 100%;">پاشکەوتکردن</button>
       <p id="statusMsg"></p>
     </section>
 
     <!-- بەشی ئاماری ڕۆژانە -->
-    <section class="card">
+    <section class="card" style="text-align: center;">
       <h2>ئاماری ڕۆژانە</h2>
       <label>ڕێکەوت هەڵبژێرە:</label>
-      <input type="date" id="dailyFilterDate" style="text-align: right; font-size: 1.1em; padding: 12px; font-weight: bold; width: 100%; box-sizing: border-box;">
+      <!-- بچووککردنەوەی خانەی ڕێکەوت -->
+      <input type="date" id="dailyFilterDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc;">
+      
       <div class="button-group" style="margin-top: 10px;">
         <button id="btnLoadDaily">پیشاندان</button>
         <button id="btnExportDailyExcel" class="btn-excel">Excel</button>
         <button id="btnExportDailyPDF" class="btn-pdf">PDF</button>
       </div>
-      <div id="dailyOutput"></div>
+      <div id="dailyOutput" style="margin-top: 15px; text-align: right;"></div>
     </section>
 
     <!-- بەشی ئاماری هەفتانە -->
     <section class="card">
-      <h2>ئاماری هەفتانە</h2>
+      <h2 style="text-align: center;">ئاماری هەفتانە</h2>
       
-      <!-- دوگمەکانی گۆڕینی هەفتە -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 10px; border-radius: 8px;">
           <button id="btnNextWeek" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">داهاتوو ➡️</button>
-          <strong id="weekLabelLabel" style="color: #2c3e50; font-size: 1.1em;">ئەم هەفتەیە</strong>
+          <strong id="weekLabelLabel" style="color: #2c3e50; font-size: 1.1em; text-align: center;">ئەم هەفتەیە</strong>
           <button id="btnPrevWeek" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">⬅️ پێشوو</button>
       </div>
 
