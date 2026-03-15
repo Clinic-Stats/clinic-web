@@ -17,9 +17,10 @@
     <div class="card login-card">
       <h1>🏥 چوونە ژوورەوە</h1>
       <label>ناوی کارمەند:</label>
-      <input type="text" id="loginEmail" placeholder="نموونە: naza">
+      <!-- بەکارهێنانی onkeydown بۆ چوونە سەر پاسوۆرد -->
+      <input type="text" id="loginEmail" placeholder="نموونە: naza" onkeydown="if(event.key === 'Enter') document.getElementById('loginPassword').focus();">
       <label>پاسوۆرد:</label>
-      <input type="password" id="loginPassword" placeholder="******">
+      <input type="password" id="loginPassword" placeholder="******" onkeydown="if(event.key === 'Enter') window.login();">
       <button id="btnLogin">چوونەژوورەوە</button>
       <p id="loginError"></p>
     </div>
@@ -87,10 +88,12 @@
     <section class="card">
       <h2 style="text-align: center;">ئاماری هەفتانە</h2>
       
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 10px; border-radius: 8px;">
-          <button id="btnNextWeek" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">داهاتوو ➡️</button>
-          <strong id="weekLabelLabel" style="color: #2c3e50; font-size: 1.1em; text-align: center;">ئەم هەفتەیە</strong>
-          <button id="btnPrevWeek" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">⬅️ پێشوو</button>
+      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 15px; border-radius: 8px; gap: 10px;">
+          <!-- کۆمبۆبۆکس بۆ دیاریکردنی هەفتە -->
+          <select id="weekSelector" onchange="window.selectWeekFromDropdown()" style="width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; font-weight: bold; text-align: center;">
+              <!-- هەفتەکان لە ڕێگەی جاڤاسکپریپتەوە پڕ دەکرێنەوە -->
+          </select>
+          <div id="weekDateRangeLabel" style="font-size: 0.9em; color: #555; text-align: center; margin-top: 5px;"></div>
       </div>
 
       <div class="button-group">

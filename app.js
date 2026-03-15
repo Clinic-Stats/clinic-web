@@ -13,7 +13,6 @@ const firebaseConfig = {
   messagingSenderId: "122761541077",
   appId: "1:122761541077:web:967c2618895fe57d51b95c"
 };
-
 const app  = initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 const auth = getAuth(app);
@@ -23,7 +22,8 @@ enableIndexedDbPersistence(db).catch(err => console.log("Offline error:", err.co
 let currentUser  = null;
 let chartInstance = null;
 let isCurrentUserAdmin = false;
-let currentWeekOffset = 0; 
+let selectedWeekNumber = getWeekNumber(new Date()); // لەسەرەتادا هەفتەی ئەمڕۆ دەبێت
+let currentYear = new Date().getFullYear();
 
 // ════════════════════════════════
 //  بەشی لۆگین و چاودێریکردن
@@ -55,7 +55,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     setTodayDate();
-    updateWeekLabel(); 
+    populateWeekDropdown(); // پڕکردنەوەی لیستەکە بە هەفتەکان
     loadWeekly(); 
   } else {
     currentUser = null;
@@ -76,20 +76,35 @@ function setTodayDate() {
   document.getElementById("dailyFilterDate").value = todayStr;
 }
 
-const login = async function () {
+window.login = async function () {
   let email = document.getElementById("loginEmail").value.trim().toLowerCase();
-  const pass  = document.getElementById("loginPassword").value;
+  const passInput  = document.getElementById("loginPassword");
+  const pass = passInput.value;
+  const errorMsg = document.getElementById("loginError");
   
   if (email && !email.includes('@')) {
     email = email + "@clinic.com";
   }
 
   try {
+    errorMsg.textContent = "⏳ چاوەڕێ بکە...";
+    errorMsg.style.color = "orange";
     await signInWithEmailAndPassword(auth, email, pass);
+    errorMsg.textContent = "";
   } catch {
-    document.getElementById("loginError").textContent = "❌ ناو یان پاسوۆرد هەڵەیە";
+    errorMsg.textContent = "❌ پاسوۆرد یان ناو هەڵەیە!";
+    errorMsg.style.color = "red";
+    passInput.value = ""; // بەتاڵکردنەوەی پاسوۆردەکە
+    passInput.focus(); // خستنە سەر پاسوۆردەکە
   }
 };
+
+// کاتێک ناو دەنووسرێت و دەچێتە دەرەوە یان کلیک لە دەرەوە دەکات با بچێتە سەر پاسوۆرد
+document.getElementById("loginEmail").addEventListener("blur", function() {
+    if(this.value.trim() !== "") {
+        document.getElementById("loginPassword").focus();
+    }
+});
 
 const logout = async function () {
   await signOut(auth);
@@ -152,7 +167,7 @@ window.changeCount = function(amount) {
     if(isNaN(val)) val = 0;
     
     let newVal = val + amount;
-    if(newVal < 0) newVal = 0; // با لە سفر کەمتر نەبێت
+    if(newVal < 0) newVal = 0; 
     
     input.value = newVal;
 };
@@ -343,64 +358,71 @@ const exportDailyPDF = async function () {
 };
 
 // ════════════════════════════════
-//  بەشی ئاماری هەفتانە بەپێی دوگمەکان
+//  بەشی ئاماری هەفتانە (کۆمبۆبۆکس)
 // ════════════════════════════════
 
-function getWeekDateRange(offset) {
-  const d = new Date();
-  d.setDate(d.getDate() + (offset * 7)); 
-  
-  const day = d.getDay();
-  const diffToSunday = d.getDate() - day; 
-  
-  const firstDay = new Date(d.setDate(diffToSunday));
-  const lastDay = new Date(d);
-  lastDay.setDate(firstDay.getDate() + 6);
-
-  const formatDate = (date) => {
-    return date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
-  };
-
-  return `${formatDate(firstDay)} بۆ ${formatDate(lastDay)}`;
+// دۆزینەوەی بەرواری سەرەتا و کۆتایی هەفتەیەک بەپێی ژمارەی هەفتە لە ساڵێکدا
+function getDateRangeOfWeek(weekNo, year) {
+    let d = new Date(year, 0, 1);
+    let isLeap = new Date(year, 1, 29).getMonth() === 1;
+    let days = (weekNo - 1) * 7;
+    // گەر ڕۆژی یەکشەممە سەرەتای هەفتە بێت
+    let dayOfWeek = d.getDay(); 
+    let offset = -dayOfWeek;
+    
+    let firstDay = new Date(year, 0, d.getDate() + days + offset);
+    let lastDay = new Date(firstDay);
+    lastDay.setDate(firstDay.getDate() + 6);
+    
+    const formatDate = (date) => {
+        return date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
+    };
+    
+    return `[ لە ${formatDate(firstDay)} بۆ ${formatDate(lastDay)} ]`;
 }
 
-function updateWeekLabel() {
-  let label = document.getElementById("weekLabelLabel");
-  if (!label) return;
-  
-  let targetWkNum = getTargetWeekNumber();
-  let dateRange = getWeekDateRange(currentWeekOffset);
-  
-  let mainText = "";
-  if (currentWeekOffset === 0) {
-    mainText = "ئەم هەفتەیە";
-  } else if (currentWeekOffset === -1) {
-    mainText = "هەفتەی پێشوو";
-  } else if (currentWeekOffset < -1) {
-    mainText = Math.abs(currentWeekOffset) + " هەفتە پێش ئێستا";
-  } else if (currentWeekOffset === 1) {
-    mainText = "هەفتەی داهاتوو";
-  } else {
-    mainText = currentWeekOffset + " هەفتەی داهاتوو";
-  }
-  
-  label.innerHTML = `${mainText} (هەفتەی ${targetWkNum}) <br><span style="font-size: 0.85em; font-weight: normal; color: #555;">[ لە ${dateRange} ]</span>`;
+// پڕکردنەوەی لیستەکە (Select) بە ٥٢ هەفتەی ساڵ
+function populateWeekDropdown() {
+    const select = document.getElementById("weekSelector");
+    select.innerHTML = "";
+    
+    const currentWk = getWeekNumber(new Date());
+    
+    for (let i = 1; i <= 52; i++) {
+        let option = document.createElement("option");
+        option.value = i;
+        
+        let labelText = `هەفتەی ${i}`;
+        if (i === currentWk) labelText = `ئەم هەفتەیە (هەفتەی ${i})`;
+        else if (i === currentWk - 1) labelText = `هەفتەی پێشوو (هەفتەی ${i})`;
+        
+        option.textContent = labelText;
+        if (i === currentWk) option.selected = true; // خۆکارانە هەفتەی ئێستا هەڵبژێرە
+        
+        select.appendChild(option);
+    }
+    
+    updateDateRangeLabel();
 }
 
-const changeWeek = function(direction) {
-  currentWeekOffset += direction;
-  updateWeekLabel();
-  loadWeekly(); 
+function updateDateRangeLabel() {
+    const label = document.getElementById("weekDateRangeLabel");
+    if(!label) return;
+    
+    let dateRange = getDateRangeOfWeek(selectedWeekNumber, currentYear);
+    label.textContent = dateRange;
+}
+
+window.selectWeekFromDropdown = function() {
+    const select = document.getElementById("weekSelector");
+    selectedWeekNumber = parseInt(select.value);
+    updateDateRangeLabel();
+    loadWeekly();
 };
 
-function getTargetWeekNumber() {
-  const d = new Date();
-  d.setDate(d.getDate() + (currentWeekOffset * 7));
-  return getWeekNumber(d);
-}
-
 async function fetchWeekly() {
-  return getDocs(query(collection(db, "entries"), where("weekNumber", "==", getTargetWeekNumber())));
+  // تەنها ئەو داتایانە دەهێنێت کە ژمارەی هەفتەکەیان یەکسانە بە هەفتەی هەڵبژێردراو
+  return getDocs(query(collection(db, "entries"), where("weekNumber", "==", selectedWeekNumber)));
 }
 
 const loadWeekly = async function () {
@@ -466,7 +488,7 @@ const exportWeeklyPDF = async function () {
   const pdfDoc = new jsPDF();
   pdfDoc.setFontSize(14);
   
-  let titleText = "Weekly Statistics (Week " + getTargetWeekNumber() + ")";
+  let titleText = "Weekly Statistics (Week " + selectedWeekNumber + ")";
   pdfDoc.text(titleText, 14, 15);
 
   const rows = [];
@@ -520,7 +542,7 @@ function getWeekNumber(d) {
 // بەستنەوەی دوگمەکان (Event Listeners)
 // ════════════════════════════════
 document.addEventListener("DOMContentLoaded", () => {
-    if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", login);
+    if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", window.login);
     if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", logout);
     
     if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", toggleAdminForm);
@@ -535,7 +557,4 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", loadWeekly);
     if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", exportWeeklyExcel);
     if(document.getElementById("btnExportWeeklyPDF")) document.getElementById("btnExportWeeklyPDF").addEventListener("click", exportWeeklyPDF);
-    
-    if(document.getElementById("btnPrevWeek")) document.getElementById("btnPrevWeek").addEventListener("click", () => changeWeek(-1));
-    if(document.getElementById("btnNextWeek")) document.getElementById("btnNextWeek").addEventListener("click", () => changeWeek(1));
 });
