@@ -23,6 +23,7 @@ enableIndexedDbPersistence(db).catch(err => console.log("Offline error:", err.co
 let currentUser  = null;
 let chartInstance = null;
 let isCurrentUserAdmin = false;
+let currentWeekOffset = 0; // گۆڕاو بۆ دیاریکردنی هەفتە (0=ئەم هەفتەیە، -1=هەفتەی پێشوو)
 
 // ════════════════════════════════
 //  بەشی لۆگین و چاودێریکردن
@@ -54,6 +55,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     setTodayDate();
+    loadWeekly(); // خۆکارانە هەفتانە باربکرێت
   } else {
     currentUser = null;
     isCurrentUserAdmin = false;
@@ -95,6 +97,18 @@ window.logout = async function () {
 // ════════════════════════════════
 //  بەشی بەڕێوەبەر
 // ════════════════════════════════
+window.toggleAdminForm = function() {
+  const wrapper = document.getElementById("adminFormWrapper");
+  const btn = document.getElementById("toggleAdminBtn");
+  if (wrapper.style.display === "none" || wrapper.style.display === "") {
+    wrapper.style.display = "block";
+    btn.innerHTML = "➖ شاردنەوەی فۆرم";
+  } else {
+    wrapper.style.display = "none";
+    btn.innerHTML = "➕ زیادکردنی کارمەندی نوێ";
+  }
+};
+
 window.createStaff = async function () {
   let email = document.getElementById("newStaffEmail").value.trim().toLowerCase();
   const pass = document.getElementById("newStaffPassword").value;
@@ -156,6 +170,9 @@ window.saveEntry = async function () {
     msg.textContent = "✅ بە سەرکەوتوویی پاشکەوت کرا!";
     msg.style.color = "green";
     document.getElementById("patientCount").value = "";
+    
+    // نوێکردنەوەی هەفتانە دوای خەزنکردن
+    loadWeekly();
   } catch (e) {
     msg.textContent = "❌ هەڵە: " + e.message;
     msg.style.color = "red";
@@ -246,6 +263,7 @@ window.editEntry = async function(docId, currentCount) {
     await setDoc(doc(db, "entries", docId), { count: numVal }, { merge: true });
     alert("✅ بە سەرکەوتوویی نوێکرایەوە!");
     loadDaily(); 
+    loadWeekly();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
   }
@@ -258,6 +276,7 @@ window.deleteEntry = async function(docId) {
     await deleteDoc(doc(db, "entries", docId));
     alert("✅ بە سەرکەوتوویی سڕایەوە!");
     loadDaily();
+    loadWeekly();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
   }
@@ -310,16 +329,43 @@ window.exportDailyPDF = async function () {
 };
 
 // ════════════════════════════════
-//  بەشی ئاماری هەفتانە
+//  بەشی ئاماری هەفتانە بەپێی دوگمەکان
 // ════════════════════════════════
+
+window.changeWeek = function(direction) {
+  currentWeekOffset += direction;
+  let label = document.getElementById("weekLabelLabel");
+  
+  if (currentWeekOffset === 0) {
+    label.textContent = "ئەم هەفتەیە";
+  } else if (currentWeekOffset === -1) {
+    label.textContent = "هەفتەی پێشوو";
+  } else if (currentWeekOffset < -1) {
+    label.textContent = Math.abs(currentWeekOffset) + " هەفتە پێش ئێستا";
+  } else if (currentWeekOffset === 1) {
+    label.textContent = "هەفتەی داهاتوو";
+  } else {
+    label.textContent = currentWeekOffset + " هەفتەی داهاتوو";
+  }
+  
+  loadWeekly();
+};
+
+function getTargetWeekNumber() {
+  const d = new Date();
+  d.setDate(d.getDate() + (currentWeekOffset * 7));
+  return getWeekNumber(d);
+}
+
 async function fetchWeekly() {
-  return getDocs(query(collection(db, "entries"), where("weekNumber", "==", getWeekNumber(new Date()))));
+  return getDocs(query(collection(db, "entries"), where("weekNumber", "==", getTargetWeekNumber())));
 }
 
 window.loadWeekly = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) {
-    document.getElementById("weeklyOutput").innerHTML = "<p>هیچ تۆمارێک نییە</p>";
+    document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    if (chartInstance) chartInstance.destroy();
     return;
   }
 
@@ -377,7 +423,12 @@ window.exportWeeklyPDF = async function () {
   const { jsPDF } = window.jspdf;
   const pdfDoc = new jsPDF();
   pdfDoc.setFontSize(14);
-  pdfDoc.text("Weekly Statistics", 14, 15);
+  
+  let titleText = "Weekly Statistics";
+  if(currentWeekOffset !== 0) {
+      titleText += " (Offset: " + currentWeekOffset + " weeks)";
+  }
+  pdfDoc.text(titleText, 14, 15);
 
   const rows = [];
   for (const [staff, count] of Object.entries(totals)) {
