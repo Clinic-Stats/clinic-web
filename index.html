@@ -57,13 +57,12 @@
       <label style="margin-top: 15px;">ژمارەی نەخۆش:</label>
       <!-- بەشی دوگمەکانی زیادکردن و کەمکردنەوە -->
       <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 15px; direction: ltr;">
-        <button id="btnMinus" type="button" style="width: 45px; height: 45px; margin: 0; padding: 0; font-size: 24px; font-weight: bold; background-color: #e74c3c; border-radius: 8px;">-</button>
-        <input type="number" id="patientCount" placeholder="0" min="0" style="width: 80px !important; height: 45px; margin: 0; padding: 5px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 8px; border: 1px solid #ccc;">
-        <button id="btnPlus" type="button" style="width: 45px; height: 45px; margin: 0; padding: 0; font-size: 24px; font-weight: bold; background-color: #2ecc71; border-radius: 8px;">+</button>
+        <button type="button" onclick="window.changeCount(-1)" style="width: 45px; height: 45px; margin: 0; padding: 0; font-size: 24px; font-weight: bold; background-color: #e74c3c; border-radius: 8px;">-</button>
+        <input type="number" id="patientCount" value="0" min="0" style="width: 80px !important; height: 45px; margin: 0; padding: 5px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 8px; border: 1px solid #ccc;">
+        <button type="button" onclick="window.changeCount(1)" style="width: 45px; height: 45px; margin: 0; padding: 0; font-size: 24px; font-weight: bold; background-color: #2ecc71; border-radius: 8px;">+</button>
       </div>
 
       <label>ڕێکەوت:</label>
-      <!-- بچووککردنەوەی خانەی ڕێکەوت -->
       <input type="date" id="entryDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc;">
       
       <button id="btnSaveEntry" style="width: 100%;">پاشکەوتکردن</button>
@@ -74,7 +73,6 @@
     <section class="card" style="text-align: center;">
       <h2>ئاماری ڕۆژانە</h2>
       <label>ڕێکەوت هەڵبژێرە:</label>
-      <!-- بچووککردنەوەی خانەی ڕێکەوت -->
       <input type="date" id="dailyFilterDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; box-sizing: border-box; border-radius: 8px; border: 1px solid #ccc;">
       
       <div class="button-group" style="margin-top: 10px;">

@@ -146,20 +146,15 @@ const createStaff = async function () {
 // ════════════════════════════════
 // بەشی دوگمەی + و -
 // ════════════════════════════════
-const incrementPatientCount = function() {
+window.changeCount = function(amount) {
     const input = document.getElementById("patientCount");
     let val = parseInt(input.value);
     if(isNaN(val)) val = 0;
-    input.value = val + 1;
-};
-
-const decrementPatientCount = function() {
-    const input = document.getElementById("patientCount");
-    let val = parseInt(input.value);
-    if(isNaN(val)) val = 0;
-    if(val > 0) {
-        input.value = val - 1;
-    }
+    
+    let newVal = val + amount;
+    if(newVal < 0) newVal = 0; // با لە سفر کەمتر نەبێت
+    
+    input.value = newVal;
 };
 
 // ════════════════════════════════
@@ -189,7 +184,7 @@ const saveEntry = async function () {
     });
     msg.textContent = "✅ بە سەرکەوتوویی پاشکەوت کرا!";
     msg.style.color = "green";
-    document.getElementById("patientCount").value = "0"; // ڕیفڕێشکردنی ژمارەکە بۆ سفر
+    document.getElementById("patientCount").value = "0";
     
     loadWeekly();
   } catch (e) {
@@ -531,10 +526,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", toggleAdminForm);
     if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", createStaff);
     
-    // دوگمەکانی کەم و زیادکردن
-    if(document.getElementById("btnPlus")) document.getElementById("btnPlus").addEventListener("click", incrementPatientCount);
-    if(document.getElementById("btnMinus")) document.getElementById("btnMinus").addEventListener("click", decrementPatientCount);
-
     if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", saveEntry);
     
     if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", loadDaily);
