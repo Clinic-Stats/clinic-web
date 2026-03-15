@@ -55,7 +55,8 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     setTodayDate();
-    loadWeekly(); // خۆکارانە هەفتانە باربکرێت
+    updateWeekLabel(); // نوێکردنەوەی نووسینی هەفتەکە لەگەڵ ڕێکەوتەکان
+    loadWeekly(); 
   } else {
     currentUser = null;
     isCurrentUserAdmin = false;
@@ -248,7 +249,6 @@ const loadDaily = async function () {
   output.innerHTML = html;
 };
 
-// بۆ ئەوەی ڕاستەوخۆ لەناو HTML کار بکات (چونکە ئەمانە ناو خشتە دروست دەکرێن)
 window.editEntry = async function(docId, currentCount) {
   const newCount = prompt("ژمارەی نوێی نەخۆشان بنووسە:", currentCount);
   if (newCount === null || newCount.trim() === "") return;
@@ -332,25 +332,55 @@ const exportDailyPDF = async function () {
 //  بەشی ئاماری هەفتانە بەپێی دوگمەکان
 // ════════════════════════════════
 
-const changeWeek = function(direction) {
-  currentWeekOffset += direction;
-  let label = document.getElementById("weekLabelLabel");
-  let targetWkNum = getTargetWeekNumber();
+// فەنکشن بۆ هێنانی یەکەم ڕۆژ و کۆتا ڕۆژی هەفتەی دیاریکراو
+function getWeekDateRange(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + (offset * 7)); // چوون بۆ هەفتەی مەبەست
   
+  const day = d.getDay();
+  // گەر ڕۆژی یەکشەممە سەرەتای هەفتە بێت، ئەوا یەکشەممە = 0
+  const diffToSunday = d.getDate() - day; 
+  
+  const firstDay = new Date(d.setDate(diffToSunday));
+  const lastDay = new Date(d);
+  lastDay.setDate(firstDay.getDate() + 6);
+
+  const formatDate = (date) => {
+    return date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
+  };
+
+  return `${formatDate(firstDay)} بۆ ${formatDate(lastDay)}`;
+}
+
+// فەنکشن بۆ نوێکردنەوەی نووسینی سەرەوەی خشتەکە
+function updateWeekLabel() {
+  let label = document.getElementById("weekLabelLabel");
+  if (!label) return;
+  
+  let targetWkNum = getTargetWeekNumber();
+  let dateRange = getWeekDateRange(currentWeekOffset);
+  
+  let mainText = "";
   if (currentWeekOffset === 0) {
-    label.textContent = "ئەم هەفتەیە (هەفتەی " + targetWkNum + ")";
+    mainText = "ئەم هەفتەیە";
   } else if (currentWeekOffset === -1) {
-    label.textContent = "هەفتەی پێشوو (هەفتەی " + targetWkNum + ")";
+    mainText = "هەفتەی پێشوو";
   } else if (currentWeekOffset < -1) {
-    label.textContent = Math.abs(currentWeekOffset) + " هەفتە پێش ئێستا (هەفتەی " + targetWkNum + ")";
+    mainText = Math.abs(currentWeekOffset) + " هەفتە پێش ئێستا";
   } else if (currentWeekOffset === 1) {
-    label.textContent = "هەفتەی داهاتوو (هەفتەی " + targetWkNum + ")";
+    mainText = "هەفتەی داهاتوو";
   } else {
-    label.textContent = currentWeekOffset + " هەفتەی داهاتوو (هەفتەی " + targetWkNum + ")";
+    mainText = currentWeekOffset + " هەفتەی داهاتوو";
   }
   
-  // ڕاستەوخۆ داتاکە نوێ بکەرەوە
-  loadWeekly();
+  // شێوازی نووسینەکە: ئەم هەفتەیە (هەفتەی 11) - [ 15/3/2026 بۆ 21/3/2026 ]
+  label.innerHTML = `${mainText} (هەفتەی ${targetWkNum}) <br><span style="font-size: 0.85em; font-weight: normal; color: #555;">[ لە ${dateRange} ]</span>`;
+}
+
+const changeWeek = function(direction) {
+  currentWeekOffset += direction;
+  updateWeekLabel();
+  loadWeekly(); // ڕاستەوخۆ داتاکە نوێ بکەرەوە
 };
 
 function getTargetWeekNumber() {
@@ -364,11 +394,6 @@ async function fetchWeekly() {
 }
 
 const loadWeekly = async function () {
-  // کاتێک یەکەم جار لۆد دەبێت ئەگەر 0 بوو، ژمارەی هەفتەکەش نیشان بدە
-  if(currentWeekOffset === 0 && document.getElementById("weekLabelLabel")) {
-      document.getElementById("weekLabelLabel").textContent = "ئەم هەفتەیە (هەفتەی " + getTargetWeekNumber() + ")";
-  }
-
   const snap = await fetchWeekly();
   if (snap.empty) {
     document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
@@ -485,28 +510,22 @@ function getWeekNumber(d) {
 // بەستنەوەی دوگمەکان (Event Listeners)
 // ════════════════════════════════
 document.addEventListener("DOMContentLoaded", () => {
-    // چوونەژوورەوە و دەرچوون
     if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", login);
     if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", logout);
     
-    // بەشی کارمەند زیادکردن
     if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", toggleAdminForm);
     if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", createStaff);
     
-    // بەشی پاشکەوتکردنی ڕۆژانە
     if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", saveEntry);
     
-    // بەشی ئاماری ڕۆژانە
     if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", loadDaily);
     if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", exportDailyExcel);
     if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", exportDailyPDF);
     
-    // بەشی ئاماری هەفتانە
     if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", loadWeekly);
     if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", exportWeeklyExcel);
     if(document.getElementById("btnExportWeeklyPDF")) document.getElementById("btnExportWeeklyPDF").addEventListener("click", exportWeeklyPDF);
     
-    // دوگمەکانی پێشوو و داهاتوو
     if(document.getElementById("btnPrevWeek")) document.getElementById("btnPrevWeek").addEventListener("click", () => changeWeek(-1));
     if(document.getElementById("btnNextWeek")) document.getElementById("btnNextWeek").addEventListener("click", () => changeWeek(1));
 });
