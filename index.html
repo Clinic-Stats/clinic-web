@@ -20,7 +20,7 @@
       <input type="text" id="loginEmail" placeholder="نموونە: naza">
       <label>پاسوۆرد:</label>
       <input type="password" id="loginPassword" placeholder="******">
-      <button onclick="login()">چوونەژوورەوە</button>
+      <button id="btnLogin">چوونەژوورەوە</button>
       <p id="loginError"></p>
     </div>
   </div>
@@ -31,7 +31,7 @@
       <h1>📊 ئاماری نەخۆشان</h1>
       <div>
         <span id="currentUserName"></span>
-        <button class="logout-btn" onclick="logout()">دەرچوون</button>
+        <button class="logout-btn" id="btnLogout">دەرچوون</button>
       </div>
     </div>
 
@@ -40,14 +40,14 @@
       <h2>بەڕێوەبردن</h2>
       
       <!-- دوگمەی کردنەوەی فۆرمی کارمەند -->
-      <button id="toggleAdminBtn" onclick="toggleAdminForm()" style="background:#2c3e50; margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
+      <button id="toggleAdminBtn" style="background:#2c3e50; margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
       
       <div id="adminFormWrapper" style="display:none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
         <label>ناوی کارمەند:</label>
         <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند بێ بۆشایی">
         <label>پاسوۆرد:</label>
         <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
-        <button onclick="createStaff()" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
+        <button id="btnCreateStaff" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
         <p id="createStaffMsg"></p>
       </div>
     </section>
@@ -59,7 +59,7 @@
       <input type="number" id="patientCount" placeholder="0" min="0">
       <label>ڕێکەوت:</label>
       <input type="date" id="entryDate" style="text-align: right; font-size: 1.1em; padding: 12px; font-weight: bold; width: 100%; box-sizing: border-box;">
-      <button onclick="saveEntry()">پاشکەوتکردن</button>
+      <button id="btnSaveEntry">پاشکەوتکردن</button>
       <p id="statusMsg"></p>
     </section>
 
@@ -69,9 +69,9 @@
       <label>ڕێکەوت هەڵبژێرە:</label>
       <input type="date" id="dailyFilterDate" style="text-align: right; font-size: 1.1em; padding: 12px; font-weight: bold; width: 100%; box-sizing: border-box;">
       <div class="button-group" style="margin-top: 10px;">
-        <button onclick="loadDaily()">پیشاندان</button>
-        <button onclick="exportDailyExcel()" class="btn-excel">Excel</button>
-        <button onclick="exportDailyPDF()" class="btn-pdf">PDF</button>
+        <button id="btnLoadDaily">پیشاندان</button>
+        <button id="btnExportDailyExcel" class="btn-excel">Excel</button>
+        <button id="btnExportDailyPDF" class="btn-pdf">PDF</button>
       </div>
       <div id="dailyOutput"></div>
     </section>
@@ -82,15 +82,15 @@
       
       <!-- دوگمەکانی گۆڕینی هەفتە -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 10px; border-radius: 8px;">
-          <button onclick="changeWeek(1)" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">داهاتوو ➡️</button>
+          <button id="btnNextWeek" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">داهاتوو ➡️</button>
           <strong id="weekLabelLabel" style="color: #2c3e50; font-size: 1.1em;">ئەم هەفتەیە</strong>
-          <button onclick="changeWeek(-1)" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">⬅️ پێشوو</button>
+          <button id="btnPrevWeek" style="width: auto; margin: 0; padding: 8px 12px; background: #7f8c8d;">⬅️ پێشوو</button>
       </div>
 
       <div class="button-group">
-        <button onclick="loadWeekly()">پیشاندان</button>
-        <button onclick="exportWeeklyExcel()" class="btn-excel">Excel</button>
-        <button onclick="exportWeeklyPDF()" class="btn-pdf">PDF</button>
+        <button id="btnLoadWeekly">پیشاندان</button>
+        <button id="btnExportWeeklyExcel" class="btn-excel">Excel</button>
+        <button id="btnExportWeeklyPDF" class="btn-pdf">PDF</button>
       </div>
       <div id="weeklyOutput"></div>
       <canvas id="weeklyChart" height="100"></canvas>

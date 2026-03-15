@@ -75,7 +75,7 @@ function setTodayDate() {
   document.getElementById("dailyFilterDate").value = todayStr;
 }
 
-window.login = async function () {
+const login = async function () {
   let email = document.getElementById("loginEmail").value.trim().toLowerCase();
   const pass  = document.getElementById("loginPassword").value;
   
@@ -90,14 +90,14 @@ window.login = async function () {
   }
 };
 
-window.logout = async function () {
+const logout = async function () {
   await signOut(auth);
 };
 
 // ════════════════════════════════
 //  بەشی بەڕێوەبەر
 // ════════════════════════════════
-window.toggleAdminForm = function() {
+const toggleAdminForm = function() {
   const wrapper = document.getElementById("adminFormWrapper");
   const btn = document.getElementById("toggleAdminBtn");
   if (wrapper.style.display === "none" || wrapper.style.display === "") {
@@ -109,7 +109,7 @@ window.toggleAdminForm = function() {
   }
 };
 
-window.createStaff = async function () {
+const createStaff = async function () {
   let email = document.getElementById("newStaffEmail").value.trim().toLowerCase();
   const pass = document.getElementById("newStaffPassword").value;
   const msg = document.getElementById("createStaffMsg");
@@ -145,7 +145,7 @@ window.createStaff = async function () {
 // ════════════════════════════════
 //  بەشی پاشکەوتکردنی داتا
 // ════════════════════════════════
-window.saveEntry = async function () {
+const saveEntry = async function () {
   if (!currentUser) return;
   const count   = parseInt(document.getElementById("patientCount").value);
   const dateVal = document.getElementById("entryDate").value;
@@ -171,7 +171,6 @@ window.saveEntry = async function () {
     msg.style.color = "green";
     document.getElementById("patientCount").value = "";
     
-    // نوێکردنەوەی هەفتانە دوای خەزنکردن
     loadWeekly();
   } catch (e) {
     msg.textContent = "❌ هەڵە: " + e.message;
@@ -211,7 +210,7 @@ async function fetchDailyForCurrentUser() {
   }
 }
 
-window.loadDaily = async function () {
+const loadDaily = async function () {
   const snap = await fetchDailyForCurrentUser();
   if (!snap) return;
 
@@ -249,6 +248,7 @@ window.loadDaily = async function () {
   output.innerHTML = html;
 };
 
+// بۆ ئەوەی ڕاستەوخۆ لەناو HTML کار بکات (چونکە ئەمانە ناو خشتە دروست دەکرێن)
 window.editEntry = async function(docId, currentCount) {
   const newCount = prompt("ژمارەی نوێی نەخۆشان بنووسە:", currentCount);
   if (newCount === null || newCount.trim() === "") return;
@@ -282,7 +282,7 @@ window.deleteEntry = async function(docId) {
   }
 };
 
-window.exportDailyExcel = async function () {
+const exportDailyExcel = async function () {
   const snap = await fetchDailyForCurrentUser();
   if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -302,7 +302,7 @@ window.exportDailyExcel = async function () {
   XLSX.writeFile(wb, `daily_${document.getElementById("dailyFilterDate").value}.xlsx`);
 };
 
-window.exportDailyPDF = async function () {
+const exportDailyPDF = async function () {
   const snap = await fetchDailyForCurrentUser();
   if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -332,22 +332,24 @@ window.exportDailyPDF = async function () {
 //  بەشی ئاماری هەفتانە بەپێی دوگمەکان
 // ════════════════════════════════
 
-window.changeWeek = function(direction) {
+const changeWeek = function(direction) {
   currentWeekOffset += direction;
   let label = document.getElementById("weekLabelLabel");
+  let targetWkNum = getTargetWeekNumber();
   
   if (currentWeekOffset === 0) {
-    label.textContent = "ئەم هەفتەیە";
+    label.textContent = "ئەم هەفتەیە (هەفتەی " + targetWkNum + ")";
   } else if (currentWeekOffset === -1) {
-    label.textContent = "هەفتەی پێشوو";
+    label.textContent = "هەفتەی پێشوو (هەفتەی " + targetWkNum + ")";
   } else if (currentWeekOffset < -1) {
-    label.textContent = Math.abs(currentWeekOffset) + " هەفتە پێش ئێستا";
+    label.textContent = Math.abs(currentWeekOffset) + " هەفتە پێش ئێستا (هەفتەی " + targetWkNum + ")";
   } else if (currentWeekOffset === 1) {
-    label.textContent = "هەفتەی داهاتوو";
+    label.textContent = "هەفتەی داهاتوو (هەفتەی " + targetWkNum + ")";
   } else {
-    label.textContent = currentWeekOffset + " هەفتەی داهاتوو";
+    label.textContent = currentWeekOffset + " هەفتەی داهاتوو (هەفتەی " + targetWkNum + ")";
   }
   
+  // ڕاستەوخۆ داتاکە نوێ بکەرەوە
   loadWeekly();
 };
 
@@ -361,7 +363,12 @@ async function fetchWeekly() {
   return getDocs(query(collection(db, "entries"), where("weekNumber", "==", getTargetWeekNumber())));
 }
 
-window.loadWeekly = async function () {
+const loadWeekly = async function () {
+  // کاتێک یەکەم جار لۆد دەبێت ئەگەر 0 بوو، ژمارەی هەفتەکەش نیشان بدە
+  if(currentWeekOffset === 0 && document.getElementById("weekLabelLabel")) {
+      document.getElementById("weekLabelLabel").textContent = "ئەم هەفتەیە (هەفتەی " + getTargetWeekNumber() + ")";
+  }
+
   const snap = await fetchWeekly();
   if (snap.empty) {
     document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
@@ -385,7 +392,7 @@ window.loadWeekly = async function () {
   drawChart(Object.keys(totals), Object.values(totals));
 };
 
-window.exportWeeklyExcel = async function () {
+const exportWeeklyExcel = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -410,7 +417,7 @@ window.exportWeeklyExcel = async function () {
   XLSX.writeFile(wb, "weekly_stats_detailed.xlsx");
 };
 
-window.exportWeeklyPDF = async function () {
+const exportWeeklyPDF = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -424,10 +431,7 @@ window.exportWeeklyPDF = async function () {
   const pdfDoc = new jsPDF();
   pdfDoc.setFontSize(14);
   
-  let titleText = "Weekly Statistics";
-  if(currentWeekOffset !== 0) {
-      titleText += " (Offset: " + currentWeekOffset + " weeks)";
-  }
+  let titleText = "Weekly Statistics (Week " + getTargetWeekNumber() + ")";
   pdfDoc.text(titleText, 14, 15);
 
   const rows = [];
@@ -476,3 +480,33 @@ function getWeekNumber(d) {
   const w1 = new Date(date.getFullYear(), 0, 4);
   return 1 + Math.round(((date - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
 }
+
+// ════════════════════════════════
+// بەستنەوەی دوگمەکان (Event Listeners)
+// ════════════════════════════════
+document.addEventListener("DOMContentLoaded", () => {
+    // چوونەژوورەوە و دەرچوون
+    if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", login);
+    if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", logout);
+    
+    // بەشی کارمەند زیادکردن
+    if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", toggleAdminForm);
+    if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", createStaff);
+    
+    // بەشی پاشکەوتکردنی ڕۆژانە
+    if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", saveEntry);
+    
+    // بەشی ئاماری ڕۆژانە
+    if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", loadDaily);
+    if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", exportDailyExcel);
+    if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", exportDailyPDF);
+    
+    // بەشی ئاماری هەفتانە
+    if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", loadWeekly);
+    if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", exportWeeklyExcel);
+    if(document.getElementById("btnExportWeeklyPDF")) document.getElementById("btnExportWeeklyPDF").addEventListener("click", exportWeeklyPDF);
+    
+    // دوگمەکانی پێشوو و داهاتوو
+    if(document.getElementById("btnPrevWeek")) document.getElementById("btnPrevWeek").addEventListener("click", () => changeWeek(-1));
+    if(document.getElementById("btnNextWeek")) document.getElementById("btnNextWeek").addEventListener("click", () => changeWeek(1));
+});
