@@ -995,6 +995,7 @@ window.loadMonthly = async function () {
     staffTotals[x.staff].child += child;
   });
   
+  // پوختەی کارمەندان - چاککراوە
   let html = "<h3>📊 پوختەی کارمەندان</h3>";
   html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
     <thead><tr style="background: #3498db; color: white;">
@@ -1008,10 +1009,10 @@ window.loadMonthly = async function () {
   for (const [staff, totals] of Object.entries(staffTotals)) {
     const total = totals.adult + totals.child;
     html += `<tr style="border-bottom: 1px solid #eee;">
-      <td style="padding: 8px; text-align: center;">${staff}${staff}
-      <td style="padding: 8px; text-align: center;">${totals.adult}${staff}
-      <td style="padding: 8px; text-align: center;">${totals.child}${staff}
-      <td style="padding: 8px; text-align: center;"><strong>${total}</strong>${staff}
+      <td style="padding: 8px; text-align: center;">${staff}</td>
+      <td style="padding: 8px; text-align: center;">${totals.adult}</td>
+      <td style="padding: 8px; text-align: center;">${totals.child}</td>
+      <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
      </tr>`;
     grandAdult += totals.adult;
     grandChild += totals.child;
@@ -1023,6 +1024,7 @@ window.loadMonthly = async function () {
     <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
    </tr></tbody></table></div>`;
   
+  // ڕۆژانە
   html += "<h3 style='margin-top:20px;'>📅 ڕۆژانە</h3>";
   html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
     <thead><tr style="background: #3498db; color: white;">
@@ -1041,10 +1043,10 @@ window.loadMonthly = async function () {
   for (const date of sortedDates) {
     const t = dailyTotals[date];
     html += `<tr style="border-bottom: 1px solid #eee;">
-      <td style="padding: 8px; text-align: center;">${date}${date}
-      <td style="padding: 8px; text-align: center;">${t.adult}${date}
-      <td style="padding: 8px; text-align: center;">${t.child}${date}
-      <td style="padding: 8px; text-align: center;"><strong>${t.adult + t.child}</strong>${date}
+      <td style="padding: 8px; text-align: center;">${date}</td>
+      <td style="padding: 8px; text-align: center;">${t.adult}</td>
+      <td style="padding: 8px; text-align: center;">${t.child}</td>
+      <td style="padding: 8px; text-align: center;"><strong>${t.adult + t.child}</strong></td>
      </tr>`;
   }
   html += `</tbody></table></div>`;
