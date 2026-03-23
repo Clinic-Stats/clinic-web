@@ -93,11 +93,13 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById("adminSection").style.display = "block";
       document.getElementById("searchSection").style.display = "block";
       document.getElementById("backupSection").style.display = "block";
+      document.getElementById("qrCodeSection").style.display = "block"; // 👈 QR Code بەش بۆ ئەدمین
       await loadStaffList();
     } else {
       document.getElementById("adminSection").style.display = "none";
       document.getElementById("searchSection").style.display = "none";
       document.getElementById("backupSection").style.display = "none";
+      document.getElementById("qrCodeSection").style.display = "none"; // 👈 بۆ ستاف پیشان نەدەرێت
     }
 
     setTodayDate();
@@ -113,7 +115,6 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById("dashboard").style.display = "none";
   }
 });
-
 // ============================================
 // LOAD STAFF LIST FOR ADMIN SEARCH (FIXED)
 // ============================================
