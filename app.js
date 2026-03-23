@@ -210,7 +210,7 @@ window.changeCount = async function(fieldId, amount) {
       const alreadySaved = await checkDateSaved(dateVal);
       if (alreadySaved) {
         const msg = document.getElementById("statusMsg");
-        msg.textContent = "⛔ ئەم ڕۆژە پێشتر تۆمار کراوە، نەتوانرێت زیادی بکرێت!";
+        msg.textContent = "⛔ ئەم ڕۆژە پێشتر تۆما کراوە، ناتوانرێت زیادی بکرێت!";
         msg.style.color = "red";
         setTimeout(() => { msg.textContent = ""; }, 4000);
         return;
