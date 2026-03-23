@@ -297,3 +297,29 @@ canvas {
   max-width: 100%;
   height: auto;
 }
+/* بچووککردنەوەی چارتەکان */
+#weeklyChart, #monthlyChart {
+  max-height: 200px !important;
+  height: 200px !important;
+  width: 100% !important;
+}
+
+#weeklyChartContainer, #monthlyChartContainer {
+  max-height: 220px;
+  margin: 10px 0;
+}
+
+/* فۆنتی بچووک بۆ چارتەکان */
+.chart-container canvas {
+  font-size: 10px;
+}
+
+@media (max-width: 768px) {
+  #weeklyChart, #monthlyChart {
+    max-height: 160px !important;
+    height: 160px !important;
+  }
+  #weeklyChartContainer, #monthlyChartContainer {
+    max-height: 180px;
+  }
+}

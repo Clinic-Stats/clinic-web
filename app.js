@@ -31,7 +31,7 @@ let selectedWeekNumber = getWeekNumber(new Date());
 let currentYear = new Date().getFullYear();
 let todayAlreadySaved = false;
 let currentTheme = localStorage.getItem('theme') || 'light';
-let allStaffList = []; // List of all staff for admin search
+let allStaffList = [];
 
 // ============================================
 // THEME MANAGEMENT
@@ -93,7 +93,7 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById("adminSection").style.display = "block";
       document.getElementById("searchSection").style.display = "block";
       document.getElementById("backupSection").style.display = "block";
-      await loadStaffList(); // Load staff list for admin search
+      await loadStaffList();
     } else {
       document.getElementById("adminSection").style.display = "none";
       document.getElementById("searchSection").style.display = "none";
@@ -115,7 +115,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ============================================
-// LOAD STAFF LIST FOR ADMIN SEARCH
+// LOAD STAFF LIST FOR ADMIN SEARCH (FIXED)
 // ============================================
 async function loadStaffList() {
   try {
@@ -124,7 +124,8 @@ async function loadStaffList() {
     usersSnap.forEach(doc => {
       const userData = doc.data();
       if (userData.role === "staff") {
-        allStaffList.push(doc.id.split('@')[0]);
+        const staffName = doc.id.split('@')[0];
+        allStaffList.push(staffName);
       }
     });
     
@@ -138,26 +139,31 @@ async function loadStaffList() {
         select.appendChild(option);
       });
     }
+    console.log("Staff list loaded:", allStaffList);
   } catch (e) {
-    console.log("Error loading staff list:", e);
+    console.error("Error loading staff list:", e);
   }
 }
 
 // ============================================
-// SEARCH BY STAFF (for admin)
+// SEARCH BY STAFF (FIXED)
 // ============================================
 window.searchByStaff = async function() {
   const selectedStaff = document.getElementById("staffSearchSelect").value;
   const searchOutput = document.getElementById("searchOutput");
   
   if (!selectedStaff) {
-    searchOutput.innerHTML = "<p style='text-align:center;'>تکایە کارمەندێک هەڵبژێرە</p>";
+    searchOutput.innerHTML = "<p style='text-align:center; color:#888;'>تکایە کارمەندێک هەڵبژێرە</p>";
     return;
   }
 
   showLoading();
+  searchOutput.innerHTML = "<p style='text-align:center;'>⏳ چاوەڕێ بکە... داتا دەهێنرێت</p>";
   
   try {
+    console.log("Searching for staff:", selectedStaff);
+    
+    // Create query for entries of selected staff
     const entriesQuery = query(
       collection(db, "entries"), 
       where("staff", "==", selectedStaff),
@@ -165,52 +171,60 @@ window.searchByStaff = async function() {
     );
     
     const snap = await getDocs(entriesQuery);
+    console.log("Found entries:", snap.size);
     
     if (snap.empty) {
-      searchOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە بۆ ئەم کارمەندە</p>";
-    } else {
-      let html = `<h3>📋 تۆمارەکانی ${selectedStaff}</h3>`;
-      html += `<div style="overflow-x: auto;"><table><thead><tr>
-        <th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>📅 ڕێکەوت</th>
-      </tr></thead><tbody>`;
-      
-      let totalAdult = 0, totalChild = 0;
-      
-      snap.forEach(doc => {
-        const data = doc.data();
-        const adult = data.countAdult ?? data.count ?? 0;
-        const child = data.countChild ?? 0;
-        const total = adult + child;
-        
-        // Skip zero entries
-        if (total === 0) return;
-        
-        totalAdult += adult;
-        totalChild += child;
-        
-        html += `<tr>
-          <td>${adult}</td>
-          <td>${child}</td>
-          <td><strong>${total}</strong></td>
-          <td style="direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
-        </tr>`;
-      });
-      
-      if (totalAdult === 0 && totalChild === 0) {
-        html += `<tr><td colspan="4" style="text-align:center;">هیچ تۆمارێکی ناسفر نییە</td></tr>`;
-      } else {
-        html += `<tr class="total-row"><td colspan="2"><strong>کۆی گشتی</strong></td>
-          <td><strong>${totalAdult + totalChild}</strong></td>
-          <td>-</td>
-        </tr>`;
-      }
-      
-      html += `</tbody></table></div>`;
-      searchOutput.innerHTML = html;
+      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێک نییە بۆ کارمەند "${selectedStaff}"</p>`;
+      hideLoading();
+      return;
     }
+    
+    let html = `<h3 style="margin-bottom: 15px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
+    html += `<div style="overflow-x: auto;">`;
+    html += `<table style="width:100%; border-collapse: collapse;">`;
+    html += `<thead><tr style="background: #3498db; color: white;">
+      <th style="padding: 10px;">#</th>
+      <th style="padding: 10px;">🧑 گەورە</th>
+      <th style="padding: 10px;">🧒 منال</th>
+      <th style="padding: 10px;">کۆی گشتی</th>
+      <th style="padding: 10px;">📅 ڕێکەوت</th>
+     </tr></thead><tbody>`;
+    
+    let totalAdult = 0, totalChild = 0;
+    let index = 1;
+    
+    snap.forEach(doc => {
+      const data = doc.data();
+      const adult = data.countAdult ?? data.count ?? 0;
+      const child = data.countChild ?? 0;
+      const total = adult + child;
+      
+      totalAdult += adult;
+      totalChild += child;
+      
+      html += `<tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 8px; text-align: center;">${index++}</td>
+        <td style="padding: 8px; text-align: center;">${adult}</td>
+        <td style="padding: 8px; text-align: center;">${child}</td>
+        <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
+        <td style="padding: 8px; text-align: center; direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
+       </tr>`;
+    });
+    
+    html += `<tr style="background: #eaf4fb; font-weight: bold;">
+      <td style="padding: 8px;"><strong>کۆی گشتی</strong></td>
+      <td style="padding: 8px; text-align: center;"><strong>${totalAdult}</strong></td>
+      <td style="padding: 8px; text-align: center;"><strong>${totalChild}</strong></td>
+      <td style="padding: 8px; text-align: center;"><strong>${totalAdult + totalChild}</strong></td>
+      <td style="padding: 8px; text-align: center;">-</td>
+     </tr>`;
+    
+    html += `</tbody></table></div>`;
+    searchOutput.innerHTML = html;
+    
   } catch (e) {
-    console.error("Search error:", e);
-    searchOutput.innerHTML = "<p style='color:red;'>هەڵە لە گەڕاندا</p>";
+    console.error("Search error details:", e);
+    searchOutput.innerHTML = `<p style='color:red; text-align:center;'>❌ هەڵە لە گەڕاندا: ${e.message}</p>`;
   } finally {
     hideLoading();
   }
@@ -313,7 +327,7 @@ window.createStaff = async function () {
     });
 
     alert("✅ ئەکاونتی کارمەندەکە بە سەرکەوتوویی دروستکرا!");
-    await loadStaffList(); // Refresh staff list
+    await loadStaffList();
     msg.textContent = "✅ کارمەند زیاد کرا!";
     msg.style.color = "green";
     document.getElementById("newStaffEmail").value = "";
@@ -390,7 +404,7 @@ window.changeCount = async function(fieldId, amount) {
 };
 
 // ============================================
-// SAVE ENTRY (with future date check)
+// SAVE ENTRY
 // ============================================
 window.saveEntry = async function () {
   if (!currentUser) return;
@@ -405,7 +419,6 @@ window.saveEntry = async function () {
     return;
   }
 
-  // Check for future date
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const selectedDate = new Date(dateVal);
@@ -512,9 +525,15 @@ window.loadDaily = async function () {
 
   const staffName = currentUser.email.toLowerCase().split('@')[0];
 
-  let html = `<div style="overflow-x: auto;"><table><thead><tr>
-    <th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th><th>کردارەکان</th>
-  </tr></thead><tbody>`;
+  let html = `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
+    <thead><tr style="background: #3498db; color: white;">
+      <th style="padding: 10px;">کارمەند</th>
+      <th style="padding: 10px;">🧑 گەورە</th>
+      <th style="padding: 10px;">🧒 منال</th>
+      <th style="padding: 10px;">کۆی گشتی</th>
+      <th style="padding: 10px;">ڕێکەوت</th>
+      <th style="padding: 10px;">کردارەکان</th>
+    </tr></thead><tbody>`;
   let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
@@ -526,9 +545,6 @@ window.loadDaily = async function () {
     const adult = data.countAdult ?? data.count ?? 0;
     const child = data.countChild ?? 0;
     const total = adult + child;
-    
-    // Skip zero entries for display
-    if (total === 0 && !isCurrentUserAdmin) return;
 
     totalAdult += adult;
     totalChild += child;
@@ -542,18 +558,25 @@ window.loadDaily = async function () {
       `;
     }
 
-    html += `<tr>
-      <td>${data.staff}</td>
-      <td>${adult}</td>
-      <td>${child}</td>
-      <td><strong>${total}</strong></td>
-      <td style="direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
-      <td>${actionButtons}</td>
+    html += `<tr style="border-bottom: 1px solid #eee;">
+      <td style="padding: 8px; text-align: center;">${data.staff}</td>
+      <td style="padding: 8px; text-align: center;">${adult}</td>
+      <td style="padding: 8px; text-align: center;">${child}</td>
+      <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
+      <td style="padding: 8px; text-align: center; direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
+      <td style="padding: 8px; text-align: center;">${actionButtons}</td>
     </tr>`;
   });
 
   if (totalAdult > 0 || totalChild > 0) {
-    html += `<tr class="total-row"><td>کۆی گشتی</td><td>${totalAdult}</td><td>${totalChild}</td><td><strong>${totalAll}</strong></td><td>-</td><td>-</td></tr>`;
+    html += `<tr style="background: #eaf4fb; font-weight: bold;">
+      <td style="padding: 8px;">کۆی گشتی</td>
+      <td style="padding: 8px; text-align: center;">${totalAdult}</td>
+      <td style="padding: 8px; text-align: center;">${totalChild}</td>
+      <td style="padding: 8px; text-align: center;"><strong>${totalAll}</strong></td>
+      <td style="padding: 8px; text-align: center;">-</td>
+      <td style="padding: 8px; text-align: center;">-</td>
+    </tr>`;
   }
   html += `</tbody></table></div>`;
   output.innerHTML = html;
@@ -623,7 +646,6 @@ window.exportDailyExcel = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
-    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     totalAdult += adult;
     totalChild += child;
@@ -653,7 +675,6 @@ window.exportDailyPDF = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
-    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     totalAdult += adult;
     totalChild += child;
@@ -748,7 +769,7 @@ window.loadWeekly = async function () {
   const snap = await fetchWeekly();
   
   if (snap.empty) {
-    document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    weeklyOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
     if (chartContainer) chartContainer.style.display = "none";
     if (chartInstance) chartInstance.destroy();
     hideLoading();
@@ -763,7 +784,6 @@ window.loadWeekly = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
-    if (adult === 0 && child === 0) return;
     if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0, dates: [] };
     totals[x.staff].adult += adult;
     totals[x.staff].child += child;
@@ -771,28 +791,33 @@ window.loadWeekly = async function () {
   });
 
   if (Object.keys(totals).length === 0) {
-    document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    weeklyOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
     if (chartContainer) chartContainer.style.display = "none";
     if (chartInstance) chartInstance.destroy();
     hideLoading();
     return;
   }
 
-  let html = `<div style="overflow-x: auto;"><table><thead><tr>
-    <th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>بەروارەکان</th>
-  </tr></thead><tbody>`;
+  let html = `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
+    <thead><tr style="background: #3498db; color: white;">
+      <th style="padding: 10px;">کارمەند</th>
+      <th style="padding: 10px;">🧑 گەورە</th>
+      <th style="padding: 10px;">🧒 منال</th>
+      <th style="padding: 10px;">کۆی گشتی</th>
+      <th style="padding: 10px;">بەروارەکان</th>
+    </tr></thead><tbody>`;
   const chartLabels = [], chartData = [];
   let grandAdult = 0, grandChild = 0;
 
   for (const [s, t] of Object.entries(totals)) {
     const total = t.adult + t.child;
     const datesStr = [...new Set(t.dates)].join(" | ");
-    html += `<tr>
-      <td>${s}</td>
-      <td>${t.adult}</td>
-      <td>${t.child}</td>
-      <td><strong>${total}</strong></td>
-      <td style="direction:ltr; font-size:12px;">${datesStr}</td>
+    html += `<tr style="border-bottom: 1px solid #eee;">
+      <td style="padding: 8px; text-align: center;">${s}</td>
+      <td style="padding: 8px; text-align: center;">${t.adult}</td>
+      <td style="padding: 8px; text-align: center;">${t.child}</td>
+      <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
+      <td style="padding: 8px; text-align: center; direction: ltr; font-size:12px;">${datesStr}</td>
     </tr>`;
     chartLabels.push(s);
     chartData.push(total);
@@ -801,15 +826,22 @@ window.loadWeekly = async function () {
   }
 
   if (isCurrentUserAdmin && Object.keys(totals).length > 1) {
-    html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td><td>-</td></tr>`;
+    html += `<tr style="background: #eaf4fb; font-weight: bold;">
+      <td style="padding: 8px;">کۆی گشتی</td>
+      <td style="padding: 8px; text-align: center;">${grandAdult}</td>
+      <td style="padding: 8px; text-align: center;">${grandChild}</td>
+      <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
+      <td style="padding: 8px; text-align: center;">-</td>
+     </tr>`;
   }
 
   html += `</tbody></table></div>`;
-  document.getElementById("weeklyOutput").innerHTML = html;
+  weeklyOutput.innerHTML = html;
   
-  // Show chart container and draw chart
-  if (chartContainer) chartContainer.style.display = "block";
-  drawChart(chartLabels, chartData);
+  if (chartContainer) {
+    chartContainer.style.display = "block";
+    drawChart(chartLabels, chartData);
+  }
   hideLoading();
 };
 
@@ -826,7 +858,6 @@ window.exportWeeklyExcel = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
-    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB"), x.weekNumber]);
     grandAdult += adult;
     grandChild += child;
@@ -964,32 +995,42 @@ window.loadMonthly = async function () {
     staffTotals[x.staff].child += child;
   });
   
-  // Staff Summary Table
   let html = "<h3>📊 پوختەی کارمەندان</h3>";
-  html += `<div style="overflow-x: auto;"><table><thead><tr>
-    <th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th>
-   </tr></thead><tbody>`;
+  html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
+    <thead><tr style="background: #3498db; color: white;">
+      <th style="padding: 10px;">کارمەند</th>
+      <th style="padding: 10px;">🧑 گەورە</th>
+      <th style="padding: 10px;">🧒 منال</th>
+      <th style="padding: 10px;">کۆی گشتی</th>
+     </tr></thead><tbody>`;
   
   let grandAdult = 0, grandChild = 0;
   for (const [staff, totals] of Object.entries(staffTotals)) {
     const total = totals.adult + totals.child;
-    html += `<tr>
-      <td>${staff}</td>
-      <td>${totals.adult}</td>
-      <td>${totals.child}</td>
-      <td><strong>${total}</strong></td>
+    html += `<tr style="border-bottom: 1px solid #eee;">
+      <td style="padding: 8px; text-align: center;">${staff}${staff}
+      <td style="padding: 8px; text-align: center;">${totals.adult}${staff}
+      <td style="padding: 8px; text-align: center;">${totals.child}${staff}
+      <td style="padding: 8px; text-align: center;"><strong>${total}</strong>${staff}
      </tr>`;
     grandAdult += totals.adult;
     grandChild += totals.child;
   }
-  html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td></tr>`;
-  html += `</tbody></table></div>`;
+  html += `<tr style="background: #eaf4fb; font-weight: bold;">
+    <td style="padding: 8px;">کۆی گشتی</td>
+    <td style="padding: 8px; text-align: center;">${grandAdult}</td>
+    <td style="padding: 8px; text-align: center;">${grandChild}</td>
+    <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
+   </tr></tbody></table></div>`;
   
-  // Daily breakdown
   html += "<h3 style='margin-top:20px;'>📅 ڕۆژانە</h3>";
-  html += `<div style="overflow-x: auto;"><table><thead><tr>
-    <th>ڕێکەوت</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th>
-   </tr></thead><tbody>`;
+  html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
+    <thead><tr style="background: #3498db; color: white;">
+      <th style="padding: 10px;">ڕێکەوت</th>
+      <th style="padding: 10px;">🧑 گەورە</th>
+      <th style="padding: 10px;">🧒 منال</th>
+      <th style="padding: 10px;">کۆی گشتی</th>
+     </tr></thead><tbody>`;
   
   const sortedDates = Object.keys(dailyTotals).sort((a, b) => {
     const [da, ma, ya] = a.split('/');
@@ -999,24 +1040,24 @@ window.loadMonthly = async function () {
   
   for (const date of sortedDates) {
     const t = dailyTotals[date];
-    html += `<tr>
-      <td>${date}</td>
-      <td>${t.adult}</td>
-      <td>${t.child}</td>
-      <td><strong>${t.adult + t.child}</strong></td>
+    html += `<tr style="border-bottom: 1px solid #eee;">
+      <td style="padding: 8px; text-align: center;">${date}${date}
+      <td style="padding: 8px; text-align: center;">${t.adult}${date}
+      <td style="padding: 8px; text-align: center;">${t.child}${date}
+      <td style="padding: 8px; text-align: center;"><strong>${t.adult + t.child}</strong>${date}
      </tr>`;
   }
   html += `</tbody></table></div>`;
   
   monthlyOutput.innerHTML = html;
   
-  // Draw monthly chart
-  if (monthlyChartContainer) monthlyChartContainer.style.display = "block";
-  const chartLabels = sortedDates;
-  const chartDataAdult = sortedDates.map(d => dailyTotals[d].adult);
-  const chartDataChild = sortedDates.map(d => dailyTotals[d].child);
-  
-  drawMonthlyChart(chartLabels, chartDataAdult, chartDataChild);
+  if (monthlyChartContainer) {
+    monthlyChartContainer.style.display = "block";
+    const chartLabels = sortedDates;
+    const chartDataAdult = sortedDates.map(d => dailyTotals[d].adult);
+    const chartDataChild = sortedDates.map(d => dailyTotals[d].child);
+    drawMonthlyChart(chartLabels, chartDataAdult, chartDataChild);
+  }
   hideLoading();
 };
 
@@ -1035,7 +1076,9 @@ function drawMonthlyChart(labels, adultData, childData) {
           borderColor: "rgba(52,152,219,1)",
           backgroundColor: "rgba(52,152,219,0.1)",
           tension: 0.3,
-          fill: true
+          fill: true,
+          pointRadius: 3,
+          pointHoverRadius: 5
         },
         {
           label: "🧒 منال",
@@ -1043,7 +1086,9 @@ function drawMonthlyChart(labels, adultData, childData) {
           borderColor: "rgba(46,204,113,1)",
           backgroundColor: "rgba(46,204,113,0.1)",
           tension: 0.3,
-          fill: true
+          fill: true,
+          pointRadius: 3,
+          pointHoverRadius: 5
         }
       ]
     },
@@ -1051,8 +1096,8 @@ function drawMonthlyChart(labels, adultData, childData) {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { position: 'top' },
-        title: { display: true, text: 'ڕەوتی ڕۆژانەی نەخۆشەکان' }
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        title: { display: true, text: 'ڕەوتی ڕۆژانەی نەخۆشەکان', font: { size: 12 } }
       }
     }
   });
@@ -1071,7 +1116,6 @@ window.exportMonthlyExcel = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
-    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     grandAdult += adult;
     grandChild += child;
@@ -1106,7 +1150,6 @@ window.exportMonthlyPDF = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
-    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     grandAdult += adult;
     grandChild += child;
@@ -1126,7 +1169,7 @@ window.exportMonthlyPDF = async function () {
 };
 
 // ============================================
-// BACKUP FUNCTION (Admin only)
+// BACKUP FUNCTION
 // ============================================
 window.backupData = async function () {
   if (!isCurrentUserAdmin) {
@@ -1224,7 +1267,7 @@ window.handleRestore = async function(event) {
 };
 
 // ============================================
-// CHARTS
+// CHARTS (SMALLER SIZE)
 // ============================================
 function drawChart(labels, data) {
   const ctx = document.getElementById("weeklyChart").getContext("2d");
@@ -1239,15 +1282,20 @@ function drawChart(labels, data) {
         data,
         backgroundColor: "rgba(52,152,219,0.7)",
         borderColor: "rgba(52,152,219,1)",
-        borderWidth: 1
+        borderWidth: 1,
+        borderRadius: 4
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
       plugins: { 
-        legend: { display: true, position: 'top' },
-        tooltip: { enabled: true }
+        legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { enabled: true, bodyFont: { size: 11 } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+        x: { ticks: { font: { size: 10 } } }
       }
     }
   });
@@ -1262,32 +1310,48 @@ window.switchChartType = function(type) {
   
   if (chartInstance) chartInstance.destroy();
   
-  chartInstance = new Chart(ctx, {
+  const config = {
     type: type,
     data: {
       labels: currentLabels,
       datasets: [{
         label: "نەخۆشان",
         data: currentData,
-        backgroundColor: type === 'pie' ? [
-          'rgba(52,152,219,0.7)',
-          'rgba(46,204,113,0.7)',
-          'rgba(231,76,60,0.7)',
-          'rgba(241,196,15,0.7)',
-          'rgba(155,89,182,0.7)'
-        ] : "rgba(52,152,219,0.7)",
         borderColor: "rgba(52,152,219,1)",
-        borderWidth: 1
+        borderWidth: 1,
+        borderRadius: 4
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
       plugins: { 
-        legend: { display: true, position: 'top' }
+        legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { enabled: true, bodyFont: { size: 11 } }
       }
     }
-  });
+  };
+  
+  if (type === 'pie') {
+    config.data.datasets[0].backgroundColor = [
+      'rgba(52,152,219,0.7)',
+      'rgba(46,204,113,0.7)',
+      'rgba(231,76,60,0.7)',
+      'rgba(241,196,15,0.7)',
+      'rgba(155,89,182,0.7)'
+    ];
+    config.options.plugins.legend.position = 'right';
+  } else if (type === 'bar') {
+    config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.7)";
+    config.options.plugins.legend.position = 'top';
+  } else if (type === 'line') {
+    config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.1)";
+    config.data.datasets[0].fill = true;
+    config.data.datasets[0].tension = 0.3;
+    config.options.plugins.legend.position = 'top';
+  }
+  
+  chartInstance = new Chart(ctx, config);
 };
 
 function getWeekNumber(d) {
