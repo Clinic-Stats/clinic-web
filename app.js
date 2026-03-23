@@ -55,8 +55,8 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     setTodayDate();
-    populateWeekDropdown(); // پڕکردنەوەی لیستەکە بە هەفتەکان
-    loadWeekly(); 
+    populateWeekDropdown();
+    // پیشاندان تەنها کاتێک کلیک بکرێت، نەک خۆکار
   } else {
     currentUser = null;
     isCurrentUserAdmin = false;
@@ -204,8 +204,8 @@ const saveEntry = async function () {
     msg.style.color = "green";
     document.getElementById("patientCountAdult").value = "0";
     document.getElementById("patientCountChild").value = "0";
-    
-    loadWeekly();
+    // پەیام دوای ٣ چرکە نەمێنێت
+    setTimeout(() => { msg.textContent = ""; }, 3000);
   } catch (e) {
     msg.textContent = "❌ هەڵە: " + e.message;
     msg.style.color = "red";
@@ -226,22 +226,12 @@ async function fetchDailyForCurrentUser() {
   const selectedDate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
   const nextDay = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
 
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
-
-  if (isCurrentUserAdmin) {
-    return getDocs(query(
-      collection(db, "entries"),
-      where("date", ">=", Timestamp.fromDate(selectedDate)),
-      where("date", "<=", Timestamp.fromDate(nextDay))
-    ));
-  } else {
-    return getDocs(query(
-      collection(db, "entries"),
-      where("staff", "==", staffName),
-      where("date", ">=", Timestamp.fromDate(selectedDate)),
-      where("date", "<=", Timestamp.fromDate(nextDay))
-    ));
-  }
+  // هەموو داتاکانی ئەو ڕۆژە دەهێنێت، فلتەری staff لە کۆددا دەکرێت
+  return getDocs(query(
+    collection(db, "entries"),
+    where("date", ">=", Timestamp.fromDate(selectedDate)),
+    where("date", "<=", Timestamp.fromDate(nextDay))
+  ));
 }
 
 const loadDaily = async function () {
@@ -456,7 +446,7 @@ window.selectWeekFromDropdown = function() {
     const select = document.getElementById("weekSelector");
     selectedWeekNumber = parseInt(select.value);
     updateDateRangeLabel();
-    loadWeekly();
+    // پیشاندان تەنها کاتێک دوگمەی "پیشاندان" کلیک بکرێت
 };
 
 async function fetchWeekly() {
