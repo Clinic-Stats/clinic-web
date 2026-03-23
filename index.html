@@ -114,6 +114,18 @@
     </section>
   </div>
 
+  <!-- فانکشنی + و - پێش module دانراوە بۆ ئەوەی زووتر بارببێت -->
+  <script>
+    window.changeCount = function(fieldId, amount) {
+      const input = document.getElementById(fieldId);
+      if (!input) return;
+      let val = parseInt(input.value);
+      if (isNaN(val)) val = 0;
+      let newVal = val + amount;
+      if (newVal < 0) newVal = 0;
+      input.value = newVal;
+    };
+  </script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
