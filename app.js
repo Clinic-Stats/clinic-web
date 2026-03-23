@@ -148,6 +148,9 @@ async function loadStaffList() {
 // ============================================
 // SEARCH BY STAFF (FIXED)
 // ============================================
+// ============================================
+// SEARCH BY STAFF (کار دەکات بەبێ ئیندێکس)
+// ============================================
 window.searchByStaff = async function() {
   const selectedStaff = document.getElementById("staffSearchSelect").value;
   const searchOutput = document.getElementById("searchOutput");
@@ -163,11 +166,11 @@ window.searchByStaff = async function() {
   try {
     console.log("Searching for staff:", selectedStaff);
     
-    // Create query for entries of selected staff
+    // کوێری بەبێ orderBy - پێویستی بە ئیندێکس نییە
     const entriesQuery = query(
       collection(db, "entries"), 
-      where("staff", "==", selectedStaff),
-      orderBy("date", "desc")
+      where("staff", "==", selectedStaff)
+      // orderBy لابرا - ڕیزبەندی لە ناوەوە دەکەین
     );
     
     const snap = await getDocs(entriesQuery);
@@ -178,6 +181,22 @@ window.searchByStaff = async function() {
       hideLoading();
       return;
     }
+    
+    // داتاکان کۆبکەرەوە و ڕیزبەندی بکە بە ڕێکەوت
+    const entries = [];
+    snap.forEach(doc => {
+      const data = doc.data();
+      entries.push({
+        id: doc.id,
+        adult: data.countAdult ?? data.count ?? 0,
+        child: data.countChild ?? 0,
+        date: data.date.toDate(),
+        dateStr: data.date.toDate().toLocaleDateString("en-GB")
+      });
+    });
+    
+    // ڕیزبەندی بە ڕێکەوتی نوێترین لە سەرەوە
+    entries.sort((a, b) => b.date - a.date);
     
     let html = `<h3 style="margin-bottom: 15px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
     html += `<div style="overflow-x: auto;">`;
@@ -193,23 +212,20 @@ window.searchByStaff = async function() {
     let totalAdult = 0, totalChild = 0;
     let index = 1;
     
-    snap.forEach(doc => {
-      const data = doc.data();
-      const adult = data.countAdult ?? data.count ?? 0;
-      const child = data.countChild ?? 0;
-      const total = adult + child;
+    for (const entry of entries) {
+      const total = entry.adult + entry.child;
       
-      totalAdult += adult;
-      totalChild += child;
+      totalAdult += entry.adult;
+      totalChild += entry.child;
       
       html += `<tr style="border-bottom: 1px solid #eee;">
         <td style="padding: 8px; text-align: center;">${index++}</td>
-        <td style="padding: 8px; text-align: center;">${adult}</td>
-        <td style="padding: 8px; text-align: center;">${child}</td>
+        <td style="padding: 8px; text-align: center;">${entry.adult}</td>
+        <td style="padding: 8px; text-align: center;">${entry.child}</td>
         <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
-        <td style="padding: 8px; text-align: center; direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
-       </tr>`;
-    });
+        <td style="padding: 8px; text-align: center; direction: ltr;">${entry.dateStr}</td>
+      </tr>`;
+    }
     
     html += `<tr style="background: #eaf4fb; font-weight: bold;">
       <td style="padding: 8px;"><strong>کۆی گشتی</strong></td>
@@ -217,7 +233,7 @@ window.searchByStaff = async function() {
       <td style="padding: 8px; text-align: center;"><strong>${totalChild}</strong></td>
       <td style="padding: 8px; text-align: center;"><strong>${totalAdult + totalChild}</strong></td>
       <td style="padding: 8px; text-align: center;">-</td>
-     </tr>`;
+    </tr>`;
     
     html += `</tbody></table></div>`;
     searchOutput.innerHTML = html;
