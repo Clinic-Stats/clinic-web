@@ -17,6 +17,10 @@ const app  = initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 const auth = getAuth(app);
 
+// app دووەم بۆ دروستکردنی کارمەند بەبێ لۆگئاوتکردنی ئەدمین
+const secondaryApp  = initializeApp(firebaseConfig, "secondary");
+const secondaryAuth = getAuth(secondaryApp);
+
 enableIndexedDbPersistence(db).catch(err => console.log("Offline error:", err.code));
 
 let currentUser  = null;
@@ -24,7 +28,6 @@ let chartInstance = null;
 let isCurrentUserAdmin = false;
 let selectedWeekNumber = getWeekNumber(new Date()); // لەسەرەتادا هەفتەی ئەمڕۆ دەبێت
 let currentYear = new Date().getFullYear();
-let todayAlreadySaved = false; // ئاگادارکەر: ئەم ڕۆژە تۆمارکراوە یان نا
 
 // ════════════════════════════════
 //  بەشی لۆگین و چاودێریکردن
@@ -57,12 +60,10 @@ onAuthStateChanged(auth, async (user) => {
 
     setTodayDate();
     populateWeekDropdown();
-    // چێككردنی ئایا ئەمڕۆ تۆمارکراوە
-    checkTodaySaved();
+    // پیشاندان تەنها کاتێک کلیک بکرێت، نەک خۆکار
   } else {
     currentUser = null;
     isCurrentUserAdmin = false;
-    todayAlreadySaved = false;
     document.getElementById("loginPage").style.display = "flex";
     document.getElementById("dashboard").style.display = "none";
   }
@@ -146,81 +147,45 @@ const createStaff = async function () {
   msg.style.color = "orange";
 
   try {
-    await createUserWithEmailAndPassword(auth, email, pass);
+    // secondaryAuth بەکاردەهێنین — ئەدمین لۆگئاوت نابێت
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+    
+    // زانیاری کارمەند لە Firestore پاشکەوت بکە
     await setDoc(doc(db, "users", email), {
       role: "staff",
       createdAt: Timestamp.now()
     });
 
-    alert("✅ ئەکاونتی کارمەندەکە بە سەرکەوتوویی دروستکرا!\n\nسیستەمەکە ئێستا لۆگئاوت دەبێت. تکایە دووبارە بە ئەکاونتی بەڕێوەبەر لۆگین بکەرەوە.");
-    await signOut(auth);
+    // ئەکاونتی secondary لۆگئاوت بکە (بەبێ کارت نییە)
+    await signOut(secondaryAuth);
+
+    msg.textContent = "✅ کارمەندی نوێ بە سەرکەوتوویی دروستکرا!";
+    msg.style.color = "green";
+    document.getElementById("newStaffEmail").value = "";
+    document.getElementById("newStaffPassword").value = "";
+    setTimeout(() => { msg.textContent = ""; }, 4000);
 
   } catch (e) {
-    msg.textContent = "❌ هەڵە: " + e.message;
+    if (e.code === "auth/email-already-in-use") {
+      msg.textContent = "❌ ئەم ناوە پێشتر تۆمارکراوە!";
+    } else {
+      msg.textContent = "❌ هەڵە: " + e.message;
+    }
     msg.style.color = "red";
   }
 };
 
 // ════════════════════════════════
-// چێككردنی ئایا ئەمڕۆ تۆمارکراوە
-// ════════════════════════════════
-async function checkTodaySaved() {
-  if (!currentUser) return;
-  const todayStr = getLocalISODate(new Date());
-  const parts = todayStr.split('-');
-  const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
-  const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
-  try {
-    const snap = await getDocs(query(
-      collection(db, "entries"),
-      where("staff", "==", staffName),
-      where("date", ">=", Timestamp.fromDate(dayStart)),
-      where("date", "<=", Timestamp.fromDate(dayEnd))
-    ));
-    todayAlreadySaved = !snap.empty;
-  } catch(e) { todayAlreadySaved = false; }
-}
-
-// هەمان فانکشن بەڵام بۆ ڕێکەوتی دیاریکراو (نەک تەنها ئەمڕۆ)
-async function checkDateSaved(dateVal) {
-  if (!currentUser || !dateVal) return false;
-  const parts = dateVal.split('-');
-  const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
-  const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
-  try {
-    const snap = await getDocs(query(
-      collection(db, "entries"),
-      where("staff", "==", staffName),
-      where("date", ">=", Timestamp.fromDate(dayStart)),
-      where("date", "<=", Timestamp.fromDate(dayEnd))
-    ));
-    return !snap.empty;
-  } catch(e) { return false; }
-}
-
-// ════════════════════════════════
 // بەشی دوگمەی + و -
 // ════════════════════════════════
-window.changeCount = async function(fieldId, amount) {
-    // تەنها کاتێک زیاد دەکرێت (نەک کەمکردنەوە) چێک دەکەین
-    if (amount > 0) {
-      const dateVal = document.getElementById("entryDate").value;
-      const alreadySaved = await checkDateSaved(dateVal);
-      if (alreadySaved) {
-        const msg = document.getElementById("statusMsg");
-        msg.textContent = "⛔ ئەم ڕۆژە پێشتر تۆما کراوە، ناتوانرێت زیادی بکرێت!";
-        msg.style.color = "red";
-        setTimeout(() => { msg.textContent = ""; }, 4000);
-        return;
-      }
-    }
+window.changeCount = function(fieldId, amount) {
     const input = document.getElementById(fieldId);
     let val = parseInt(input.value);
     if(isNaN(val)) val = 0;
+    
     let newVal = val + amount;
     if(newVal < 0) newVal = 0; 
+    
     input.value = newVal;
 };
 
@@ -279,7 +244,7 @@ const saveEntry = async function () {
     msg.style.color = "green";
     document.getElementById("patientCountAdult").value = "0";
     document.getElementById("patientCountChild").value = "0";
-    todayAlreadySaved = true; // ئێستا تۆمارکرا
+    // پەیام دوای ٣ چرکە نەمێنێت
     setTimeout(() => { msg.textContent = ""; }, 3000);
   } catch (e) {
     msg.textContent = "❌ هەڵە: " + e.message;
