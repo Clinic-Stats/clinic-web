@@ -146,10 +146,7 @@ async function loadStaffList() {
 }
 
 // ============================================
-// SEARCH BY STAFF (FIXED)
-// ============================================
-// ============================================
-// SEARCH BY STAFF (کار دەکات بەبێ ئیندێکس)
+// SEARCH BY STAFF (پیشاندانی تەنها تۆمارە ناسفرەکان)
 // ============================================
 window.searchByStaff = async function() {
   const selectedStaff = document.getElementById("staffSearchSelect").value;
@@ -170,7 +167,6 @@ window.searchByStaff = async function() {
     const entriesQuery = query(
       collection(db, "entries"), 
       where("staff", "==", selectedStaff)
-      // orderBy لابرا - ڕیزبەندی لە ناوەوە دەکەین
     );
     
     const snap = await getDocs(entriesQuery);
@@ -182,21 +178,36 @@ window.searchByStaff = async function() {
       return;
     }
     
-    // داتاکان کۆبکەرەوە و ڕیزبەندی بکە بە ڕێکەوت
+    // داتاکان کۆبکەرەوە و ڕیزبەندی بکە
     const entries = [];
     snap.forEach(doc => {
       const data = doc.data();
-      entries.push({
-        id: doc.id,
-        adult: data.countAdult ?? data.count ?? 0,
-        child: data.countChild ?? 0,
-        date: data.date.toDate(),
-        dateStr: data.date.toDate().toLocaleDateString("en-GB")
-      });
+      const adult = data.countAdult ?? data.count ?? 0;
+      const child = data.countChild ?? 0;
+      const total = adult + child;
+      
+      // 🔴 تەنها تۆمارەکانی کۆی گشتی > 0 زیاد بکە
+      if (total > 0) {
+        entries.push({
+          id: doc.id,
+          adult: adult,
+          child: child,
+          total: total,
+          date: data.date.toDate(),
+          dateStr: data.date.toDate().toLocaleDateString("en-GB")
+        });
+      }
     });
     
     // ڕیزبەندی بە ڕێکەوتی نوێترین لە سەرەوە
     entries.sort((a, b) => b.date - a.date);
+    
+    // پشکنینی ئەگەر هیچ تۆمارێکی ناسفر نەما
+    if (entries.length === 0) {
+      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێکی ناسفر نییە بۆ کارمەند "${selectedStaff}"</p>`;
+      hideLoading();
+      return;
+    }
     
     let html = `<h3 style="margin-bottom: 15px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
     html += `<div style="overflow-x: auto;">`;
@@ -207,14 +218,12 @@ window.searchByStaff = async function() {
       <th style="padding: 10px;">🧒 منال</th>
       <th style="padding: 10px;">کۆی گشتی</th>
       <th style="padding: 10px;">📅 ڕێکەوت</th>
-     </tr></thead><tbody>`;
+      </tr></thead><tbody>`;
     
     let totalAdult = 0, totalChild = 0;
     let index = 1;
     
     for (const entry of entries) {
-      const total = entry.adult + entry.child;
-      
       totalAdult += entry.adult;
       totalChild += entry.child;
       
@@ -222,7 +231,7 @@ window.searchByStaff = async function() {
         <td style="padding: 8px; text-align: center;">${index++}</td>
         <td style="padding: 8px; text-align: center;">${entry.adult}</td>
         <td style="padding: 8px; text-align: center;">${entry.child}</td>
-        <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
+        <td style="padding: 8px; text-align: center;"><strong>${entry.total}</strong></td>
         <td style="padding: 8px; text-align: center; direction: ltr;">${entry.dateStr}</td>
       </tr>`;
     }
