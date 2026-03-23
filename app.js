@@ -188,13 +188,31 @@ const saveEntry = async function () {
 
   if (countAdult === 0 && countChild === 0) {
     msg.textContent = "⚠️ تکایە داتا داخڵ بکە — ژمارەی نەخۆش سفرە!";
-    msg.style.color = "orange"; return;
+    msg.style.color = "orange";
+    setTimeout(() => { msg.textContent = ""; }, 3000);
+    return;
   }
   
   const parts = dateVal.split('-');
   const dateObj = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
   
   let staffSimpleName = currentUser.email.toLowerCase().split('@')[0];
+
+  // ئاگاداری تۆمارکراوی ئەم ڕۆژە
+  const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
+  const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
+  try {
+    const existing = await getDocs(query(
+      collection(db, "entries"),
+      where("staff", "==", staffSimpleName),
+      where("date", ">=", Timestamp.fromDate(dayStart)),
+      where("date", "<=", Timestamp.fromDate(dayEnd))
+    ));
+    if (!existing.empty) {
+      const go = confirm(`⚠️ ئەم ڕۆژە (${dateVal}) پێشتر تۆمار کراوە!\nئایا دەتەوێت دووبارە تۆمار بکەی؟`);
+      if (!go) return;
+    }
+  } catch(e) { /* بەردەوامبە */ }
 
   try {
     await addDoc(collection(db, "entries"), {
@@ -484,15 +502,15 @@ const loadWeekly = async function () {
 
   const staffName = currentUser ? currentUser.email.toLowerCase().split('@')[0] : "";
 
-  // totals: { staffName: { adult, child } }
+  // totals: { staffName: { adult, child, dates:[] } }
   const totals = {};
   snap.forEach(d => {
     const x = d.data();
-    // کارمەند تەنها ئامارى خۆی دەبینێت
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
-    if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0 };
+    if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0, dates: [] };
     totals[x.staff].adult += x.countAdult ?? x.count ?? 0;
     totals[x.staff].child += x.countChild ?? 0;
+    totals[x.staff].dates.push(x.date.toDate().toLocaleDateString("en-GB"));
   });
 
   if (Object.keys(totals).length === 0) {
@@ -501,13 +519,14 @@ const loadWeekly = async function () {
     return;
   }
 
-  let html = "<table><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th></tr>";
+  let html = "<table><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>بەروارەکان</th></tr>";
   const chartLabels = [], chartData = [];
   let grandAdult = 0, grandChild = 0;
 
   for (const [s, t] of Object.entries(totals)) {
     const total = t.adult + t.child;
-    html += `<tr><td>${s}</td><td>${t.adult}</td><td>${t.child}</td><td><strong>${total}</strong></td></tr>`;
+    const datesStr = [...new Set(t.dates)].join(" | ");
+    html += `<tr><td>${s}</td><td>${t.adult}</td><td>${t.child}</td><td><strong>${total}</strong></td><td style="direction:ltr; font-size:12px;">${datesStr}</td></tr>`;
     chartLabels.push(s);
     chartData.push(total);
     grandAdult += t.adult;
@@ -515,7 +534,7 @@ const loadWeekly = async function () {
   }
 
   if (isCurrentUserAdmin && Object.keys(totals).length > 1) {
-    html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td></tr>`;
+    html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td><td>-</td></tr>`;
   }
 
   html += "</table>";
