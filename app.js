@@ -21,9 +21,6 @@ const auth = getAuth(app);
 // Enable offline persistence
 enableIndexedDbPersistence(db).catch(err => {
   console.log("Offline error:", err.code);
-  if (err.code === 'failed-precondition') {
-    console.log("Multiple tabs open, persistence disabled");
-  }
 });
 
 let currentUser = null;
@@ -34,6 +31,7 @@ let selectedWeekNumber = getWeekNumber(new Date());
 let currentYear = new Date().getFullYear();
 let todayAlreadySaved = false;
 let currentTheme = localStorage.getItem('theme') || 'light';
+let allStaffList = []; // List of all staff for admin search
 
 // ============================================
 // THEME MANAGEMENT
@@ -94,9 +92,12 @@ onAuthStateChanged(auth, async (user) => {
     if (isCurrentUserAdmin) {
       document.getElementById("adminSection").style.display = "block";
       document.getElementById("searchSection").style.display = "block";
+      document.getElementById("backupSection").style.display = "block";
+      await loadStaffList(); // Load staff list for admin search
     } else {
       document.getElementById("adminSection").style.display = "none";
-      document.getElementById("searchSection").style.display = "block";
+      document.getElementById("searchSection").style.display = "none";
+      document.getElementById("backupSection").style.display = "none";
     }
 
     setTodayDate();
@@ -113,6 +114,111 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// ============================================
+// LOAD STAFF LIST FOR ADMIN SEARCH
+// ============================================
+async function loadStaffList() {
+  try {
+    const usersSnap = await getDocs(collection(db, "users"));
+    allStaffList = [];
+    usersSnap.forEach(doc => {
+      const userData = doc.data();
+      if (userData.role === "staff") {
+        allStaffList.push(doc.id.split('@')[0]);
+      }
+    });
+    
+    const select = document.getElementById("staffSearchSelect");
+    if (select) {
+      select.innerHTML = '<option value="">-- هەموو کارمەندەکان --</option>';
+      allStaffList.forEach(staff => {
+        const option = document.createElement("option");
+        option.value = staff;
+        option.textContent = staff;
+        select.appendChild(option);
+      });
+    }
+  } catch (e) {
+    console.log("Error loading staff list:", e);
+  }
+}
+
+// ============================================
+// SEARCH BY STAFF (for admin)
+// ============================================
+window.searchByStaff = async function() {
+  const selectedStaff = document.getElementById("staffSearchSelect").value;
+  const searchOutput = document.getElementById("searchOutput");
+  
+  if (!selectedStaff) {
+    searchOutput.innerHTML = "<p style='text-align:center;'>تکایە کارمەندێک هەڵبژێرە</p>";
+    return;
+  }
+
+  showLoading();
+  
+  try {
+    const entriesQuery = query(
+      collection(db, "entries"), 
+      where("staff", "==", selectedStaff),
+      orderBy("date", "desc")
+    );
+    
+    const snap = await getDocs(entriesQuery);
+    
+    if (snap.empty) {
+      searchOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە بۆ ئەم کارمەندە</p>";
+    } else {
+      let html = `<h3>📋 تۆمارەکانی ${selectedStaff}</h3>`;
+      html += `<div style="overflow-x: auto;"><table><thead><tr>
+        <th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>📅 ڕێکەوت</th>
+      </tr></thead><tbody>`;
+      
+      let totalAdult = 0, totalChild = 0;
+      
+      snap.forEach(doc => {
+        const data = doc.data();
+        const adult = data.countAdult ?? data.count ?? 0;
+        const child = data.countChild ?? 0;
+        const total = adult + child;
+        
+        // Skip zero entries
+        if (total === 0) return;
+        
+        totalAdult += adult;
+        totalChild += child;
+        
+        html += `<tr>
+          <td>${adult}</td>
+          <td>${child}</td>
+          <td><strong>${total}</strong></td>
+          <td style="direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
+        </tr>`;
+      });
+      
+      if (totalAdult === 0 && totalChild === 0) {
+        html += `<tr><td colspan="4" style="text-align:center;">هیچ تۆمارێکی ناسفر نییە</td></tr>`;
+      } else {
+        html += `<tr class="total-row"><td colspan="2"><strong>کۆی گشتی</strong></td>
+          <td><strong>${totalAdult + totalChild}</strong></td>
+          <td>-</td>
+        </tr>`;
+      }
+      
+      html += `</tbody></table></div>`;
+      searchOutput.innerHTML = html;
+    }
+  } catch (e) {
+    console.error("Search error:", e);
+    searchOutput.innerHTML = "<p style='color:red;'>هەڵە لە گەڕاندا</p>";
+  } finally {
+    hideLoading();
+  }
+};
+
+// ============================================
+// GET LOCAL ISO DATE
+// ============================================
 function getLocalISODate(dateObj) {
   const offset = dateObj.getTimezoneOffset() * 60000;
   return (new Date(dateObj.getTime() - offset)).toISOString().split('T')[0];
@@ -206,76 +312,17 @@ window.createStaff = async function () {
       createdAt: Timestamp.now()
     });
 
-    alert("✅ ئەکاونتی کارمەندەکە بە سەرکەوتوویی دروستکرا!\n\nسیستەمەکە ئێستا لۆگئاوت دەبێت. تکایە دووبارە بە ئەکاونتی بەڕێوەبەر لۆگین بکەرەوە.");
-    await signOut(auth);
+    alert("✅ ئەکاونتی کارمەندەکە بە سەرکەوتوویی دروستکرا!");
+    await loadStaffList(); // Refresh staff list
+    msg.textContent = "✅ کارمەند زیاد کرا!";
+    msg.style.color = "green";
+    document.getElementById("newStaffEmail").value = "";
+    document.getElementById("newStaffPassword").value = "";
+    setTimeout(() => { msg.textContent = ""; }, 3000);
 
   } catch (e) {
     msg.textContent = "❌ هەڵە: " + e.message;
     msg.style.color = "red";
-  } finally {
-    hideLoading();
-  }
-};
-
-// ============================================
-// SEARCH FUNCTION
-// ============================================
-window.searchEntries = async function() {
-  const searchTerm = document.getElementById("searchInput").value.trim().toLowerCase();
-  const searchOutput = document.getElementById("searchOutput");
-  
-  if (!searchTerm) {
-    searchOutput.innerHTML = "";
-    return;
-  }
-
-  showLoading();
-  
-  try {
-    let entriesQuery;
-    if (isCurrentUserAdmin) {
-      entriesQuery = query(collection(db, "entries"), orderBy("date", "desc"));
-    } else {
-      const staffName = currentUser.email.toLowerCase().split('@')[0];
-      entriesQuery = query(
-        collection(db, "entries"), 
-        where("staff", "==", staffName),
-        orderBy("date", "desc")
-      );
-    }
-    
-    const snap = await getDocs(entriesQuery);
-    const results = [];
-    
-    snap.forEach(doc => {
-      const data = doc.data();
-      const staff = data.staff.toLowerCase();
-      const date = data.date.toDate().toLocaleDateString("en-GB");
-      
-      if (staff.includes(searchTerm) || date.includes(searchTerm)) {
-        results.push({ id: doc.id, ...data });
-      }
-    });
-    
-    if (results.length === 0) {
-      searchOutput.innerHTML = "<p style='text-align:center;'>هیچ ئەنجامێک نەدۆزرایەوە</p>";
-    } else {
-      let html = `<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th></tr></thead><tbody>`;
-      results.forEach(r => {
-        html += `<tr>
-          <td>${r.staff}</td>
-          <td>${r.countAdult || 0}</td>
-          <td>${r.countChild || 0}</td>
-          <td><strong>${(r.countAdult || 0) + (r.countChild || 0)}</strong></td>
-          <td>${r.date.toDate().toLocaleDateString("en-GB")}</td>
-        </tr>`;
-      });
-      html += `</tbody></table>`;
-      searchOutput.innerHTML = html;
-    }
-  } catch (e) {
-    console.error("Search error:", e);
-    searchOutput.innerHTML = "<p style='color:red;'>هەڵە لە گەڕاندا</p>";
   } finally {
     hideLoading();
   }
@@ -465,7 +512,9 @@ window.loadDaily = async function () {
 
   const staffName = currentUser.email.toLowerCase().split('@')[0];
 
-  let html = "<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th><th>کردارەکان</th></tr></thead><tbody>";
+  let html = `<div style="overflow-x: auto;"><table><thead><tr>
+    <th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th><th>کردارەکان</th>
+  </tr></thead><tbody>`;
   let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
@@ -477,6 +526,9 @@ window.loadDaily = async function () {
     const adult = data.countAdult ?? data.count ?? 0;
     const child = data.countChild ?? 0;
     const total = adult + child;
+    
+    // Skip zero entries for display
+    if (total === 0 && !isCurrentUserAdmin) return;
 
     totalAdult += adult;
     totalChild += child;
@@ -500,7 +552,10 @@ window.loadDaily = async function () {
     </tr>`;
   });
 
-  html += `<tr class="total-row"><td>کۆی گشتی</td><td>${totalAdult}</td><td>${totalChild}</td><td><strong>${totalAll}</strong></td><td>-</td><td>-</td></tr></tbody></table>`;
+  if (totalAdult > 0 || totalChild > 0) {
+    html += `<tr class="total-row"><td>کۆی گشتی</td><td>${totalAdult}</td><td>${totalChild}</td><td><strong>${totalAll}</strong></td><td>-</td><td>-</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
   output.innerHTML = html;
   hideLoading();
 };
@@ -529,6 +584,7 @@ window.editEntry = async function(docId, currentAdult, currentChild) {
     loadDaily(); 
     loadWeekly();
     if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") loadMonthly();
+    if (isCurrentUserAdmin && document.getElementById("staffSearchSelect").value) searchByStaff();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
   } finally {
@@ -546,6 +602,7 @@ window.deleteEntry = async function(docId) {
     loadDaily();
     loadWeekly();
     if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") loadMonthly();
+    if (isCurrentUserAdmin && document.getElementById("staffSearchSelect").value) searchByStaff();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
   } finally {
@@ -566,6 +623,7 @@ window.exportDailyExcel = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
+    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     totalAdult += adult;
     totalChild += child;
@@ -595,6 +653,7 @@ window.exportDailyPDF = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
+    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     totalAdult += adult;
     totalChild += child;
@@ -676,9 +735,11 @@ async function fetchWeekly() {
 
 window.loadWeekly = async function () {
   const weeklyOutput = document.getElementById("weeklyOutput");
+  const chartContainer = document.getElementById("weeklyChartContainer");
 
   if (weeklyOutput.innerHTML.trim() !== "") {
     weeklyOutput.innerHTML = "";
+    if (chartContainer) chartContainer.style.display = "none";
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     return;
   }
@@ -688,6 +749,7 @@ window.loadWeekly = async function () {
   
   if (snap.empty) {
     document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    if (chartContainer) chartContainer.style.display = "none";
     if (chartInstance) chartInstance.destroy();
     hideLoading();
     return;
@@ -699,27 +761,39 @@ window.loadWeekly = async function () {
   snap.forEach(d => {
     const x = d.data();
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    if (adult === 0 && child === 0) return;
     if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0, dates: [] };
-    totals[x.staff].adult += x.countAdult ?? x.count ?? 0;
-    totals[x.staff].child += x.countChild ?? 0;
+    totals[x.staff].adult += adult;
+    totals[x.staff].child += child;
     totals[x.staff].dates.push(x.date.toDate().toLocaleDateString("en-GB"));
   });
 
   if (Object.keys(totals).length === 0) {
     document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    if (chartContainer) chartContainer.style.display = "none";
     if (chartInstance) chartInstance.destroy();
     hideLoading();
     return;
   }
 
-  let html = "<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>بەروارەکان</th></tr></thead><tbody>";
+  let html = `<div style="overflow-x: auto;"><table><thead><tr>
+    <th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>بەروارەکان</th>
+  </tr></thead><tbody>`;
   const chartLabels = [], chartData = [];
   let grandAdult = 0, grandChild = 0;
 
   for (const [s, t] of Object.entries(totals)) {
     const total = t.adult + t.child;
     const datesStr = [...new Set(t.dates)].join(" | ");
-    html += `<tr><td>${s}</td><td>${t.adult}</td><td>${t.child}</td><td><strong>${total}</strong></td><td style="direction:ltr; font-size:12px;">${datesStr}</td></tr>`;
+    html += `<tr>
+      <td>${s}</td>
+      <td>${t.adult}</td>
+      <td>${t.child}</td>
+      <td><strong>${total}</strong></td>
+      <td style="direction:ltr; font-size:12px;">${datesStr}</td>
+    </tr>`;
     chartLabels.push(s);
     chartData.push(total);
     grandAdult += t.adult;
@@ -730,9 +804,11 @@ window.loadWeekly = async function () {
     html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td><td>-</td></tr>`;
   }
 
-  html += "</tbody></table>";
+  html += `</tbody></table></div>`;
   document.getElementById("weeklyOutput").innerHTML = html;
-
+  
+  // Show chart container and draw chart
+  if (chartContainer) chartContainer.style.display = "block";
   drawChart(chartLabels, chartData);
   hideLoading();
 };
@@ -750,6 +826,7 @@ window.exportWeeklyExcel = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
+    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB"), x.weekNumber]);
     grandAdult += adult;
     grandChild += child;
@@ -842,9 +919,11 @@ async function fetchMonthly() {
 
 window.loadMonthly = async function () {
   const monthlyOutput = document.getElementById("monthlyOutput");
+  const monthlyChartContainer = document.getElementById("monthlyChartContainer");
   
   if (monthlyOutput.innerHTML.trim() !== "") {
     monthlyOutput.innerHTML = "";
+    if (monthlyChartContainer) monthlyChartContainer.style.display = "none";
     if (monthlyChartInstance) { monthlyChartInstance.destroy(); monthlyChartInstance = null; }
     return;
   }
@@ -854,6 +933,7 @@ window.loadMonthly = async function () {
   
   if (snap.empty) {
     monthlyOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم مانگەدا</p>";
+    if (monthlyChartContainer) monthlyChartContainer.style.display = "none";
     if (monthlyChartInstance) monthlyChartInstance.destroy();
     hideLoading();
     return;
@@ -886,21 +966,30 @@ window.loadMonthly = async function () {
   
   // Staff Summary Table
   let html = "<h3>📊 پوختەی کارمەندان</h3>";
-  html += "<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th></tr></thead><tbody>";
+  html += `<div style="overflow-x: auto;"><table><thead><tr>
+    <th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th>
+   </tr></thead><tbody>`;
   
   let grandAdult = 0, grandChild = 0;
   for (const [staff, totals] of Object.entries(staffTotals)) {
     const total = totals.adult + totals.child;
-    html += `<tr><td>${staff}</td><td>${totals.adult}</td><td>${totals.child}</td><td><strong>${total}</strong></td></tr>`;
+    html += `<tr>
+      <td>${staff}</td>
+      <td>${totals.adult}</td>
+      <td>${totals.child}</td>
+      <td><strong>${total}</strong></td>
+     </tr>`;
     grandAdult += totals.adult;
     grandChild += totals.child;
   }
   html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td></tr>`;
-  html += "</tbody></table>";
+  html += `</tbody></table></div>`;
   
   // Daily breakdown
   html += "<h3 style='margin-top:20px;'>📅 ڕۆژانە</h3>";
-  html += "<table><thead><tr><th>ڕێکەوت</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th></tr></thead><tbody>";
+  html += `<div style="overflow-x: auto;"><table><thead><tr>
+    <th>ڕێکەوت</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th>
+   </tr></thead><tbody>`;
   
   const sortedDates = Object.keys(dailyTotals).sort((a, b) => {
     const [da, ma, ya] = a.split('/');
@@ -910,13 +999,19 @@ window.loadMonthly = async function () {
   
   for (const date of sortedDates) {
     const t = dailyTotals[date];
-    html += `<tr><td>${date}</td><td>${t.adult}</td><td>${t.child}</td><td><strong>${t.adult + t.child}</strong></td></tr>`;
+    html += `<tr>
+      <td>${date}</td>
+      <td>${t.adult}</td>
+      <td>${t.child}</td>
+      <td><strong>${t.adult + t.child}</strong></td>
+     </tr>`;
   }
-  html += "</tbody></table>";
+  html += `</tbody></table></div>`;
   
   monthlyOutput.innerHTML = html;
   
-  // Draw monthly chart (daily trend)
+  // Draw monthly chart
+  if (monthlyChartContainer) monthlyChartContainer.style.display = "block";
   const chartLabels = sortedDates;
   const chartDataAdult = sortedDates.map(d => dailyTotals[d].adult);
   const chartDataChild = sortedDates.map(d => dailyTotals[d].child);
@@ -954,6 +1049,7 @@ function drawMonthlyChart(labels, adultData, childData) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: true,
       plugins: {
         legend: { position: 'top' },
         title: { display: true, text: 'ڕەوتی ڕۆژانەی نەخۆشەکان' }
@@ -975,6 +1071,7 @@ window.exportMonthlyExcel = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
+    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     grandAdult += adult;
     grandChild += child;
@@ -1009,6 +1106,7 @@ window.exportMonthlyPDF = async function () {
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
+    if (adult === 0 && child === 0 && !isCurrentUserAdmin) return;
     rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
     grandAdult += adult;
     grandChild += child;
@@ -1028,7 +1126,7 @@ window.exportMonthlyPDF = async function () {
 };
 
 // ============================================
-// BACKUP FUNCTION
+// BACKUP FUNCTION (Admin only)
 // ============================================
 window.backupData = async function () {
   if (!isCurrentUserAdmin) {
@@ -1073,6 +1171,10 @@ window.backupData = async function () {
 };
 
 window.restoreBackup = function() {
+  if (!isCurrentUserAdmin) {
+    alert("تەنها بەڕێوەبەر دەتوانێت بەک‌ئەپ بەرجەستە بکاتەوە!");
+    return;
+  }
   const input = document.getElementById("restoreFile");
   input.click();
 };
@@ -1080,11 +1182,6 @@ window.restoreBackup = function() {
 window.handleRestore = async function(event) {
   const file = event.target.files[0];
   if (!file) return;
-  
-  if (!isCurrentUserAdmin) {
-    alert("تەنها بەڕێوەبەر دەتوانێت بەک‌ئەپ بەرجەستە بکاتەوە!");
-    return;
-  }
   
   const confirmed = confirm("ئاگاداری! ئەمە داتاکانی ئێستا دەسڕێتەوە و داتاکانی بەک‌ئەپەکە دەهێنێتەوە. دڵنیایت؟");
   if (!confirmed) return;
@@ -1094,7 +1191,6 @@ window.handleRestore = async function(event) {
     const text = await file.text();
     const backupData = JSON.parse(text);
     
-    // Delete all existing data
     const entriesSnap = await getDocs(collection(db, "entries"));
     for (const doc of entriesSnap.docs) {
       await deleteDoc(doc.ref);
@@ -1107,13 +1203,11 @@ window.handleRestore = async function(event) {
       }
     }
     
-    // Restore entries
     for (const entry of backupData.entries) {
       const { id, ...data } = entry;
       await setDoc(doc(db, "entries", id), data);
     }
     
-    // Restore users (except current admin)
     for (const user of backupData.users) {
       if (user.id !== currentUser.email.toLowerCase()) {
         await setDoc(doc(db, "users", user.id), user);
@@ -1150,6 +1244,7 @@ function drawChart(labels, data) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: true,
       plugins: { 
         legend: { display: true, position: 'top' },
         tooltip: { enabled: true }
@@ -1161,16 +1256,36 @@ function drawChart(labels, data) {
 window.switchChartType = function(type) {
   if (!chartInstance) return;
   
+  const currentLabels = chartInstance.data.labels;
+  const currentData = chartInstance.data.datasets[0].data;
   const ctx = document.getElementById("weeklyChart").getContext("2d");
-  const currentData = chartInstance.data;
+  
   if (chartInstance) chartInstance.destroy();
   
   chartInstance = new Chart(ctx, {
     type: type,
-    data: currentData,
+    data: {
+      labels: currentLabels,
+      datasets: [{
+        label: "نەخۆشان",
+        data: currentData,
+        backgroundColor: type === 'pie' ? [
+          'rgba(52,152,219,0.7)',
+          'rgba(46,204,113,0.7)',
+          'rgba(231,76,60,0.7)',
+          'rgba(241,196,15,0.7)',
+          'rgba(155,89,182,0.7)'
+        ] : "rgba(52,152,219,0.7)",
+        borderColor: "rgba(52,152,219,1)",
+        borderWidth: 1
+      }]
+    },
     options: {
       responsive: true,
-      plugins: { legend: { display: true, position: 'top' } }
+      maintainAspectRatio: true,
+      plugins: { 
+        legend: { display: true, position: 'top' }
+      }
     }
   });
 };
@@ -1209,10 +1324,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("btnExportMonthlyPDF")) document.getElementById("btnExportMonthlyPDF").addEventListener("click", window.exportMonthlyPDF);
     if(document.getElementById("monthSelector")) document.getElementById("monthSelector").addEventListener("change", window.selectMonth);
     
-    if(document.getElementById("searchBtn")) document.getElementById("searchBtn").addEventListener("click", window.searchEntries);
-    if(document.getElementById("searchInput")) document.getElementById("searchInput").addEventListener("keyup", (e) => {
-      if(e.key === 'Enter') window.searchEntries();
-    });
+    if(document.getElementById("staffSearchSelect")) document.getElementById("staffSearchSelect").addEventListener("change", window.searchByStaff);
     
     if(document.getElementById("backupBtn")) document.getElementById("backupBtn").addEventListener("click", window.backupData);
     if(document.getElementById("restoreBtn")) document.getElementById("restoreBtn").addEventListener("click", window.restoreBackup);
@@ -1222,7 +1334,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("chartTypeLine")) document.getElementById("chartTypeLine").addEventListener("click", () => window.switchChartType('line'));
     if(document.getElementById("chartTypePie")) document.getElementById("chartTypePie").addEventListener("click", () => window.switchChartType('pie'));
     
-    // Disable +/- buttons until module loads
     document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = true);
     setTimeout(() => {
       document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
