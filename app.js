@@ -161,8 +161,8 @@ const createStaff = async function () {
 // ════════════════════════════════
 // بەشی دوگمەی + و -
 // ════════════════════════════════
-window.changeCount = function(amount) {
-    const input = document.getElementById("patientCount");
+window.changeCount = function(fieldId, amount) {
+    const input = document.getElementById(fieldId);
     let val = parseInt(input.value);
     if(isNaN(val)) val = 0;
     
@@ -177,12 +177,13 @@ window.changeCount = function(amount) {
 // ════════════════════════════════
 const saveEntry = async function () {
   if (!currentUser) return;
-  const count   = parseInt(document.getElementById("patientCount").value);
+  const countAdult = parseInt(document.getElementById("patientCountAdult").value) || 0;
+  const countChild = parseInt(document.getElementById("patientCountChild").value) || 0;
   const dateVal = document.getElementById("entryDate").value;
   const msg     = document.getElementById("statusMsg");
 
-  if (isNaN(count) || !dateVal) {
-    msg.textContent = "⚠️ تکایە هەموو خانەکان پڕبکەرەوە"; return;
+  if (!dateVal) {
+    msg.textContent = "⚠️ تکایە ڕێکەوت دیاری بکە"; return;
   }
   
   const parts = dateVal.split('-');
@@ -193,13 +194,16 @@ const saveEntry = async function () {
   try {
     await addDoc(collection(db, "entries"), {
       staff      : staffSimpleName,
-      count      : count,
+      countAdult : countAdult,
+      countChild : countChild,
+      count      : countAdult + countChild,  // کۆی گشتی بۆ گەڕانی کۆنەکان
       date       : Timestamp.fromDate(dateObj),
       weekNumber : getWeekNumber(dateObj),
     });
     msg.textContent = "✅ بە سەرکەوتوویی پاشکەوت کرا!";
     msg.style.color = "green";
-    document.getElementById("patientCount").value = "0";
+    document.getElementById("patientCountAdult").value = "0";
+    document.getElementById("patientCountChild").value = "0";
     
     loadWeekly();
   } catch (e) {
@@ -250,46 +254,67 @@ const loadDaily = async function () {
     return;
   }
 
-  let html = "<table><tr><th>کارمەند</th><th>ژمارەی نەخۆش</th><th>ڕێکەوت</th><th>کردارەکان</th></tr>";
-  let total = 0;
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+
+  let html = "<table><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th><th>کردارەکان</th></tr>";
+  let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
     const data = d.data();
     const docId = d.id;
-    total += data.count;
+
+    // کارمەند تەنها ئامارى خۆی دەبینێت
+    if (!isCurrentUserAdmin && data.staff !== staffName) return;
+
+    const adult = data.countAdult ?? data.count ?? 0;
+    const child = data.countChild ?? 0;
+    const total = adult + child;
+
+    totalAdult += adult;
+    totalChild += child;
+    totalAll   += total;
     
     let actionButtons = "";
-    if (isCurrentUserAdmin || data.staff === currentUser.email.toLowerCase().split('@')[0]) {
+    if (isCurrentUserAdmin || data.staff === staffName) {
       actionButtons = `
-        <button onclick="editEntry('${docId}', ${data.count})" style="font-size:12px; padding:4px 8px;">✏️</button>
+        <button onclick="editEntry('${docId}', ${adult}, ${child})" style="font-size:12px; padding:4px 8px;">✏️</button>
         <button onclick="deleteEntry('${docId}')" style="font-size:12px; padding:4px 8px; background:#e74c3c;">🗑️</button>
       `;
     }
 
     html += `<tr>
       <td>${data.staff}</td>
-      <td>${data.count}</td>
+      <td>${adult}</td>
+      <td>${child}</td>
+      <td><strong>${total}</strong></td>
       <td style="direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
       <td>${actionButtons}</td>
     </tr>`;
   });
 
-  html += `<tr class="total-row"><td>کۆی گشتی</td><td>${total}</td><td>-</td><td>-</td></tr></table>`;
+  html += `<tr class="total-row"><td>کۆی گشتی</td><td>${totalAdult}</td><td>${totalChild}</td><td><strong>${totalAll}</strong></td><td>-</td><td>-</td></tr></table>`;
   output.innerHTML = html;
 };
 
-window.editEntry = async function(docId, currentCount) {
-  const newCount = prompt("ژمارەی نوێی نەخۆشان بنووسە:", currentCount);
-  if (newCount === null || newCount.trim() === "") return;
+window.editEntry = async function(docId, currentAdult, currentChild) {
+  const newAdult = prompt("🧑 ژمارەی نوێی نەخۆشی گەورە:", currentAdult);
+  if (newAdult === null) return;
+  const newChild = prompt("🧒 ژمارەی نوێی نەخۆشی منال:", currentChild);
+  if (newChild === null) return;
 
-  const numVal = parseInt(newCount);
-  if (isNaN(numVal) || numVal < 0) {
+  const adultVal = parseInt(newAdult);
+  const childVal = parseInt(newChild);
+  if (isNaN(adultVal) || isNaN(childVal) || adultVal < 0 || childVal < 0) {
     alert("تکایە ژمارەیەکی دروست بنووسە");
     return;
   }
 
   try {
-    await setDoc(doc(db, "entries", docId), { count: numVal }, { merge: true });
+    await setDoc(doc(db, "entries", docId), { 
+      countAdult: adultVal, 
+      countChild: childVal,
+      count: adultVal + childVal
+    }, { merge: true });
     alert("✅ بە سەرکەوتوویی نوێکرایەوە!");
     loadDaily(); 
     loadWeekly();
@@ -315,16 +340,21 @@ const exportDailyExcel = async function () {
   const snap = await fetchDailyForCurrentUser();
   if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
-  const data = [["کارمەند", "ژمارەی نەخۆش", "ڕێکەوت"]];
-  let total = 0;
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const data = [["کارمەند", "🧑 گەورە", "🧒 منال", "کۆی گشتی", "ڕێکەوت"]];
+  let totalAdult = 0, totalChild = 0;
 
   snap.forEach(d => {
     const x = d.data();
-    data.push([x.staff, x.count, x.date.toDate().toLocaleDateString("en-GB")]);
-    total += x.count;
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
+    totalAdult += adult;
+    totalChild += child;
   });
 
-  data.push(["کۆی گشتی", total, "-"]);
+  data.push(["کۆی گشتی", totalAdult, totalChild, totalAdult + totalChild, "-"]);
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "ئاماری ڕۆژانە");
@@ -335,26 +365,35 @@ const exportDailyPDF = async function () {
   const snap = await fetchDailyForCurrentUser();
   if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.setFontSize(14);
-  doc.text("Daily Statistics", 14, 15);
+  const pdfDoc = new jsPDF();
+  pdfDoc.setFontSize(14);
+  pdfDoc.text("Daily Statistics", 14, 15);
 
   const rows = [];
+  let totalAdult = 0, totalChild = 0;
   snap.forEach(d => {
     const x = d.data();
-    rows.push([x.staff, x.count, x.date.toDate().toLocaleDateString("en-GB")]);
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
+    totalAdult += adult;
+    totalChild += child;
   });
 
-  doc.autoTable({
-    head: [["Staff", "Patients", "Date"]],
+  rows.push(["Total", totalAdult, totalChild, totalAdult + totalChild, "-"]);
+
+  pdfDoc.autoTable({
+    head: [["Staff", "Adult", "Child", "Total", "Date"]],
     body: rows,
     startY: 25,
     headStyles: { fillColor: [52, 152, 219] },
     styles: { fontSize: 9 }
   });
 
-  doc.save(`daily_${document.getElementById("dailyFilterDate").value}.pdf`);
+  pdfDoc.save(`daily_${document.getElementById("dailyFilterDate").value}.pdf`);
 };
 
 // ════════════════════════════════
@@ -433,41 +472,67 @@ const loadWeekly = async function () {
     return;
   }
 
+  const staffName = currentUser ? currentUser.email.toLowerCase().split('@')[0] : "";
+
+  // totals: { staffName: { adult, child } }
   const totals = {};
   snap.forEach(d => {
     const x = d.data();
-    totals[x.staff] = (totals[x.staff] || 0) + x.count;
+    // کارمەند تەنها ئامارى خۆی دەبینێت
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0 };
+    totals[x.staff].adult += x.countAdult ?? x.count ?? 0;
+    totals[x.staff].child += x.countChild ?? 0;
   });
 
-  let html = "<table><tr><th>کارمەند</th><th>کۆی هەفتەکە</th></tr>";
-  for (const [s, t] of Object.entries(totals)) {
-    html += `<tr><td>${s}</td><td>${t}</td></tr>`;
+  if (Object.keys(totals).length === 0) {
+    document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    if (chartInstance) chartInstance.destroy();
+    return;
   }
+
+  let html = "<table><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th></tr>";
+  const chartLabels = [], chartData = [];
+  let grandAdult = 0, grandChild = 0;
+
+  for (const [s, t] of Object.entries(totals)) {
+    const total = t.adult + t.child;
+    html += `<tr><td>${s}</td><td>${t.adult}</td><td>${t.child}</td><td><strong>${total}</strong></td></tr>`;
+    chartLabels.push(s);
+    chartData.push(total);
+    grandAdult += t.adult;
+    grandChild += t.child;
+  }
+
+  if (isCurrentUserAdmin && Object.keys(totals).length > 1) {
+    html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td></tr>`;
+  }
+
   html += "</table>";
   document.getElementById("weeklyOutput").innerHTML = html;
 
-  drawChart(Object.keys(totals), Object.values(totals));
+  drawChart(chartLabels, chartData);
 };
 
 const exportWeeklyExcel = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
-  const data = [["کارمەند", "ڕێکەوت", "ژمارەی نەخۆش", "ژمارەی هەفتە"]];
-  let grandTotal = 0;
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const data = [["کارمەند", "🧑 گەورە", "🧒 منال", "کۆی گشتی", "ڕێکەوت", "ژمارەی هەفتە"]];
+  let grandAdult = 0, grandChild = 0;
 
   snap.forEach(d => {
     const x = d.data();
-    data.push([
-      x.staff, 
-      x.date.toDate().toLocaleDateString("en-GB"), 
-      x.count, 
-      x.weekNumber
-    ]);
-    grandTotal += x.count;
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB"), x.weekNumber]);
+    grandAdult += adult;
+    grandChild += child;
   });
 
-  data.push(["کۆی گشتی", "-", grandTotal, "-"]);
+  data.push(["کۆی گشتی", grandAdult, grandChild, grandAdult + grandChild, "-", "-"]);
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "هەفتانە");
@@ -478,26 +543,28 @@ const exportWeeklyPDF = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
   const totals = {};
   snap.forEach(d => {
     const x = d.data();
-    totals[x.staff] = (totals[x.staff] || 0) + x.count;
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0 };
+    totals[x.staff].adult += x.countAdult ?? x.count ?? 0;
+    totals[x.staff].child += x.countChild ?? 0;
   });
 
   const { jsPDF } = window.jspdf;
   const pdfDoc = new jsPDF();
   pdfDoc.setFontSize(14);
-  
-  let titleText = "Weekly Statistics (Week " + selectedWeekNumber + ")";
-  pdfDoc.text(titleText, 14, 15);
+  pdfDoc.text("Weekly Statistics (Week " + selectedWeekNumber + ")", 14, 15);
 
   const rows = [];
-  for (const [staff, count] of Object.entries(totals)) {
-    rows.push([staff, count]);
+  for (const [s, t] of Object.entries(totals)) {
+    rows.push([s, t.adult, t.child, t.adult + t.child]);
   }
 
   pdfDoc.autoTable({
-    head: [["Staff", "Total Patients"]],
+    head: [["Staff", "Adult", "Child", "Total"]],
     body: rows,
     startY: 25,
     headStyles: { fillColor: [52, 152, 219] },
