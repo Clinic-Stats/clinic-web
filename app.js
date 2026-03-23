@@ -24,6 +24,7 @@ let chartInstance = null;
 let isCurrentUserAdmin = false;
 let selectedWeekNumber = getWeekNumber(new Date()); // لەسەرەتادا هەفتەی ئەمڕۆ دەبێت
 let currentYear = new Date().getFullYear();
+let todayAlreadySaved = false; // ئاگادارکەر: ئەم ڕۆژە تۆمارکراوە یان نا
 
 // ════════════════════════════════
 //  بەشی لۆگین و چاودێریکردن
@@ -56,10 +57,12 @@ onAuthStateChanged(auth, async (user) => {
 
     setTodayDate();
     populateWeekDropdown();
-    // پیشاندان تەنها کاتێک کلیک بکرێت، نەک خۆکار
+    // چێككردنی ئایا ئەمڕۆ تۆمارکراوە
+    checkTodaySaved();
   } else {
     currentUser = null;
     isCurrentUserAdmin = false;
+    todayAlreadySaved = false;
     document.getElementById("loginPage").style.display = "flex";
     document.getElementById("dashboard").style.display = "none";
   }
@@ -159,16 +162,65 @@ const createStaff = async function () {
 };
 
 // ════════════════════════════════
+// چێككردنی ئایا ئەمڕۆ تۆمارکراوە
+// ════════════════════════════════
+async function checkTodaySaved() {
+  if (!currentUser) return;
+  const todayStr = getLocalISODate(new Date());
+  const parts = todayStr.split('-');
+  const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
+  const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  try {
+    const snap = await getDocs(query(
+      collection(db, "entries"),
+      where("staff", "==", staffName),
+      where("date", ">=", Timestamp.fromDate(dayStart)),
+      where("date", "<=", Timestamp.fromDate(dayEnd))
+    ));
+    todayAlreadySaved = !snap.empty;
+  } catch(e) { todayAlreadySaved = false; }
+}
+
+// هەمان فانکشن بەڵام بۆ ڕێکەوتی دیاریکراو (نەک تەنها ئەمڕۆ)
+async function checkDateSaved(dateVal) {
+  if (!currentUser || !dateVal) return false;
+  const parts = dateVal.split('-');
+  const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
+  const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  try {
+    const snap = await getDocs(query(
+      collection(db, "entries"),
+      where("staff", "==", staffName),
+      where("date", ">=", Timestamp.fromDate(dayStart)),
+      where("date", "<=", Timestamp.fromDate(dayEnd))
+    ));
+    return !snap.empty;
+  } catch(e) { return false; }
+}
+
+// ════════════════════════════════
 // بەشی دوگمەی + و -
 // ════════════════════════════════
-window.changeCount = function(fieldId, amount) {
+window.changeCount = async function(fieldId, amount) {
+    // تەنها کاتێک زیاد دەکرێت (نەک کەمکردنەوە) چێک دەکەین
+    if (amount > 0) {
+      const dateVal = document.getElementById("entryDate").value;
+      const alreadySaved = await checkDateSaved(dateVal);
+      if (alreadySaved) {
+        const msg = document.getElementById("statusMsg");
+        msg.textContent = "⛔ ئەم ڕۆژە پێشتر تۆمار کراوە، نەتوانرێت زیادی بکرێت!";
+        msg.style.color = "red";
+        setTimeout(() => { msg.textContent = ""; }, 4000);
+        return;
+      }
+    }
     const input = document.getElementById(fieldId);
     let val = parseInt(input.value);
     if(isNaN(val)) val = 0;
-    
     let newVal = val + amount;
     if(newVal < 0) newVal = 0; 
-    
     input.value = newVal;
 };
 
@@ -227,7 +279,7 @@ const saveEntry = async function () {
     msg.style.color = "green";
     document.getElementById("patientCountAdult").value = "0";
     document.getElementById("patientCountChild").value = "0";
-    // پەیام دوای ٣ چرکە نەمێنێت
+    todayAlreadySaved = true; // ئێستا تۆمارکرا
     setTimeout(() => { msg.textContent = ""; }, 3000);
   } catch (e) {
     msg.textContent = "❌ هەڵە: " + e.message;

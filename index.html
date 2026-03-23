@@ -114,17 +114,19 @@
     </section>
   </div>
 
-  <!-- فانکشنی + و - پێش module دانراوە بۆ ئەوەی زووتر بارببێت -->
+  <!-- window.changeCount لە app.js (module) تەسبیت دەکرێت -->
+  <!-- بۆ ئەوەی دوگمەکان پێش بارکردنی module کلیک نەکرێن، disabled دەکرێن -->
   <script>
-    window.changeCount = function(fieldId, amount) {
-      const input = document.getElementById(fieldId);
-      if (!input) return;
-      let val = parseInt(input.value);
-      if (isNaN(val)) val = 0;
-      let newVal = val + amount;
-      if (newVal < 0) newVal = 0;
-      input.value = newVal;
-    };
+    // دوگمەکانی + و - disable دەکرێن تا module بارببێت
+    document.addEventListener("DOMContentLoaded", function() {
+      document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = true);
+    });
+    window.addEventListener("load", function() {
+      // دوای بارکردن، module خۆی فانکشنەکە دروست دەکات
+      setTimeout(function() {
+        document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
+      }, 800);
+    });
   </script>
   <script type="module" src="app.js"></script>
 </body>
