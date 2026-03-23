@@ -1,10 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, setDoc, deleteDoc, enableIndexedDbPersistence }
+import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, setDoc, deleteDoc, enableIndexedDbPersistence, orderBy } 
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
-// 🔴 زانیارییەکانی خۆت لێرە دابنێ
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBY15gxSoGhtx1LTRzfC_P9Jz_a2avUaLg",
   authDomain: "clinic-stats.firebaseapp.com",
@@ -13,25 +13,64 @@ const firebaseConfig = {
   messagingSenderId: "122761541077",
   appId: "1:122761541077:web:967c2618895fe57d51b95c"
 };
-const app  = initializeApp(firebaseConfig);
-const db   = getFirestore(app);
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 const auth = getAuth(app);
 
-// app دووەم بۆ دروستکردنی کارمەند بەبێ لۆگئاوتکردنی ئەدمین
-const secondaryApp  = initializeApp(firebaseConfig, "secondary");
-const secondaryAuth = getAuth(secondaryApp);
+// Enable offline persistence
+enableIndexedDbPersistence(db).catch(err => {
+  console.log("Offline error:", err.code);
+  if (err.code === 'failed-precondition') {
+    console.log("Multiple tabs open, persistence disabled");
+  }
+});
 
-enableIndexedDbPersistence(db).catch(err => console.log("Offline error:", err.code));
-
-let currentUser  = null;
+let currentUser = null;
 let chartInstance = null;
+let monthlyChartInstance = null;
 let isCurrentUserAdmin = false;
-let selectedWeekNumber = getWeekNumber(new Date()); // لەسەرەتادا هەفتەی ئەمڕۆ دەبێت
+let selectedWeekNumber = getWeekNumber(new Date());
 let currentYear = new Date().getFullYear();
+let todayAlreadySaved = false;
+let currentTheme = localStorage.getItem('theme') || 'light';
 
-// ════════════════════════════════
-//  بەشی لۆگین و چاودێریکردن
-// ════════════════════════════════
+// ============================================
+// THEME MANAGEMENT
+// ============================================
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.body.classList.add('dark-mode');
+    document.getElementById('themeToggle').innerHTML = '☀️';
+  } else {
+    document.body.classList.remove('dark-mode');
+    document.getElementById('themeToggle').innerHTML = '🌙';
+  }
+  localStorage.setItem('theme', theme);
+  currentTheme = theme;
+}
+
+window.toggleTheme = function() {
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  applyTheme(newTheme);
+};
+
+// ============================================
+// LOADING SPINNER
+// ============================================
+function showLoading() {
+  const spinner = document.getElementById('loadingSpinner');
+  if (spinner) spinner.style.display = 'flex';
+}
+
+function hideLoading() {
+  const spinner = document.getElementById('loadingSpinner');
+  if (spinner) spinner.style.display = 'none';
+}
+
+// ============================================
+// AUTH STATE
+// ============================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
@@ -49,21 +88,26 @@ onAuthStateChanged(auth, async (user) => {
         isCurrentUserAdmin = true;
       }
     } catch (e) {
-      console.log("هەڵە لە وەرگرتنی ڕۆڵ:", e);
+      console.log("Error getting role:", e);
     }
 
     if (isCurrentUserAdmin) {
       document.getElementById("adminSection").style.display = "block";
+      document.getElementById("searchSection").style.display = "block";
     } else {
       document.getElementById("adminSection").style.display = "none";
+      document.getElementById("searchSection").style.display = "block";
     }
 
     setTodayDate();
     populateWeekDropdown();
-    // پیشاندان تەنها کاتێک کلیک بکرێت، نەک خۆکار
+    populateMonthDropdown();
+    checkTodaySaved();
+    applyTheme(currentTheme);
   } else {
     currentUser = null;
     isCurrentUserAdmin = false;
+    todayAlreadySaved = false;
     document.getElementById("loginPage").style.display = "flex";
     document.getElementById("dashboard").style.display = "none";
   }
@@ -80,9 +124,12 @@ function setTodayDate() {
   document.getElementById("dailyFilterDate").value = todayStr;
 }
 
+// ============================================
+// LOGIN FUNCTIONS
+// ============================================
 window.login = async function () {
   let email = document.getElementById("loginEmail").value.trim().toLowerCase();
-  const passInput  = document.getElementById("loginPassword");
+  const passInput = document.getElementById("loginPassword");
   const pass = passInput.value;
   const errorMsg = document.getElementById("loginError");
   
@@ -90,6 +137,7 @@ window.login = async function () {
     email = email + "@clinic.com";
   }
 
+  showLoading();
   try {
     errorMsg.textContent = "⏳ چاوەڕێ بکە...";
     errorMsg.style.color = "orange";
@@ -98,26 +146,29 @@ window.login = async function () {
   } catch {
     errorMsg.textContent = "❌ پاسوۆرد یان ناو هەڵەیە!";
     errorMsg.style.color = "red";
-    passInput.value = ""; // بەتاڵکردنەوەی پاسوۆردەکە
-    passInput.focus(); // خستنە سەر پاسوۆردەکە
+    passInput.value = "";
+    passInput.focus();
+  } finally {
+    hideLoading();
   }
 };
 
-// کاتێک ناو دەنووسرێت و دەچێتە دەرەوە یان کلیک لە دەرەوە دەکات با بچێتە سەر پاسوۆرد
 document.getElementById("loginEmail").addEventListener("blur", function() {
-    if(this.value.trim() !== "") {
-        document.getElementById("loginPassword").focus();
-    }
+  if(this.value.trim() !== "") {
+    document.getElementById("loginPassword").focus();
+  }
 });
 
-const logout = async function () {
+window.logout = async function () {
+  showLoading();
   await signOut(auth);
+  hideLoading();
 };
 
-// ════════════════════════════════
-//  بەشی بەڕێوەبەر
-// ════════════════════════════════
-const toggleAdminForm = function() {
+// ============================================
+// ADMIN FUNCTIONS
+// ============================================
+window.toggleAdminForm = function() {
   const wrapper = document.getElementById("adminFormWrapper");
   const btn = document.getElementById("toggleAdminBtn");
   if (wrapper.style.display === "none" || wrapper.style.display === "") {
@@ -129,14 +180,15 @@ const toggleAdminForm = function() {
   }
 };
 
-const createStaff = async function () {
+window.createStaff = async function () {
   let email = document.getElementById("newStaffEmail").value.trim().toLowerCase();
   const pass = document.getElementById("newStaffPassword").value;
   const msg = document.getElementById("createStaffMsg");
 
   if (!email || pass.length < 6) {
     msg.textContent = "⚠️ ناو بنووسە و پاسوۆرد نابێت لە ٦ پیت کەمتر بێت.";
-    msg.style.color = "red"; return;
+    msg.style.color = "red"; 
+    return;
   }
 
   if (!email.includes('@')) {
@@ -145,62 +197,176 @@ const createStaff = async function () {
 
   msg.textContent = "⏳ چاوەڕێ بکە...";
   msg.style.color = "orange";
+  showLoading();
 
   try {
-    // secondaryAuth بەکاردەهێنین — ئەدمین لۆگئاوت نابێت
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass);
-    
-    // زانیاری کارمەند لە Firestore پاشکەوت بکە
+    await createUserWithEmailAndPassword(auth, email, pass);
     await setDoc(doc(db, "users", email), {
       role: "staff",
       createdAt: Timestamp.now()
     });
 
-    // ئەکاونتی secondary لۆگئاوت بکە (بەبێ کارت نییە)
-    await signOut(secondaryAuth);
-
-    msg.textContent = "✅ کارمەندی نوێ بە سەرکەوتوویی دروستکرا!";
-    msg.style.color = "green";
-    document.getElementById("newStaffEmail").value = "";
-    document.getElementById("newStaffPassword").value = "";
-    setTimeout(() => { msg.textContent = ""; }, 4000);
+    alert("✅ ئەکاونتی کارمەندەکە بە سەرکەوتوویی دروستکرا!\n\nسیستەمەکە ئێستا لۆگئاوت دەبێت. تکایە دووبارە بە ئەکاونتی بەڕێوەبەر لۆگین بکەرەوە.");
+    await signOut(auth);
 
   } catch (e) {
-    if (e.code === "auth/email-already-in-use") {
-      msg.textContent = "❌ ئەم ناوە پێشتر تۆمارکراوە!";
-    } else {
-      msg.textContent = "❌ هەڵە: " + e.message;
-    }
+    msg.textContent = "❌ هەڵە: " + e.message;
     msg.style.color = "red";
+  } finally {
+    hideLoading();
   }
 };
 
-// ════════════════════════════════
-// بەشی دوگمەی + و -
-// ════════════════════════════════
-window.changeCount = function(fieldId, amount) {
-    const input = document.getElementById(fieldId);
-    let val = parseInt(input.value);
-    if(isNaN(val)) val = 0;
+// ============================================
+// SEARCH FUNCTION
+// ============================================
+window.searchEntries = async function() {
+  const searchTerm = document.getElementById("searchInput").value.trim().toLowerCase();
+  const searchOutput = document.getElementById("searchOutput");
+  
+  if (!searchTerm) {
+    searchOutput.innerHTML = "";
+    return;
+  }
+
+  showLoading();
+  
+  try {
+    let entriesQuery;
+    if (isCurrentUserAdmin) {
+      entriesQuery = query(collection(db, "entries"), orderBy("date", "desc"));
+    } else {
+      const staffName = currentUser.email.toLowerCase().split('@')[0];
+      entriesQuery = query(
+        collection(db, "entries"), 
+        where("staff", "==", staffName),
+        orderBy("date", "desc")
+      );
+    }
     
-    let newVal = val + amount;
-    if(newVal < 0) newVal = 0; 
+    const snap = await getDocs(entriesQuery);
+    const results = [];
     
-    input.value = newVal;
+    snap.forEach(doc => {
+      const data = doc.data();
+      const staff = data.staff.toLowerCase();
+      const date = data.date.toDate().toLocaleDateString("en-GB");
+      
+      if (staff.includes(searchTerm) || date.includes(searchTerm)) {
+        results.push({ id: doc.id, ...data });
+      }
+    });
+    
+    if (results.length === 0) {
+      searchOutput.innerHTML = "<p style='text-align:center;'>هیچ ئەنجامێک نەدۆزرایەوە</p>";
+    } else {
+      let html = `<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th></tr></thead><tbody>`;
+      results.forEach(r => {
+        html += `<tr>
+          <td>${r.staff}</td>
+          <td>${r.countAdult || 0}</td>
+          <td>${r.countChild || 0}</td>
+          <td><strong>${(r.countAdult || 0) + (r.countChild || 0)}</strong></td>
+          <td>${r.date.toDate().toLocaleDateString("en-GB")}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      searchOutput.innerHTML = html;
+    }
+  } catch (e) {
+    console.error("Search error:", e);
+    searchOutput.innerHTML = "<p style='color:red;'>هەڵە لە گەڕاندا</p>";
+  } finally {
+    hideLoading();
+  }
 };
 
-// ════════════════════════════════
-//  بەشی پاشکەوتکردنی داتا
-// ════════════════════════════════
-const saveEntry = async function () {
+// ============================================
+// CHECK SAVED DATE
+// ============================================
+async function checkTodaySaved() {
   if (!currentUser) return;
+  const todayStr = getLocalISODate(new Date());
+  const parts = todayStr.split('-');
+  const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
+  const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  try {
+    const snap = await getDocs(query(
+      collection(db, "entries"),
+      where("staff", "==", staffName),
+      where("date", ">=", Timestamp.fromDate(dayStart)),
+      where("date", "<=", Timestamp.fromDate(dayEnd))
+    ));
+    todayAlreadySaved = !snap.empty;
+  } catch(e) { todayAlreadySaved = false; }
+}
+
+async function checkDateSaved(dateVal) {
+  if (!currentUser || !dateVal) return false;
+  const parts = dateVal.split('-');
+  const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
+  const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  try {
+    const snap = await getDocs(query(
+      collection(db, "entries"),
+      where("staff", "==", staffName),
+      where("date", ">=", Timestamp.fromDate(dayStart)),
+      where("date", "<=", Timestamp.fromDate(dayEnd))
+    ));
+    return !snap.empty;
+  } catch(e) { return false; }
+}
+
+// ============================================
+// CHANGE COUNT
+// ============================================
+window.changeCount = async function(fieldId, amount) {
+  if (amount > 0) {
+    const dateVal = document.getElementById("entryDate").value;
+    const alreadySaved = await checkDateSaved(dateVal);
+    if (alreadySaved) {
+      const msg = document.getElementById("statusMsg");
+      msg.textContent = "⛔ ئەم ڕۆژە پێشتر تۆمار کراوە، ناتوانرێت زیادی بکرێت!";
+      msg.style.color = "red";
+      setTimeout(() => { msg.textContent = ""; }, 4000);
+      return;
+    }
+  }
+  const input = document.getElementById(fieldId);
+  let val = parseInt(input.value);
+  if(isNaN(val)) val = 0;
+  let newVal = val + amount;
+  if(newVal < 0) newVal = 0; 
+  input.value = newVal;
+};
+
+// ============================================
+// SAVE ENTRY (with future date check)
+// ============================================
+window.saveEntry = async function () {
+  if (!currentUser) return;
+  
   const countAdult = parseInt(document.getElementById("patientCountAdult").value) || 0;
   const countChild = parseInt(document.getElementById("patientCountChild").value) || 0;
   const dateVal = document.getElementById("entryDate").value;
-  const msg     = document.getElementById("statusMsg");
+  const msg = document.getElementById("statusMsg");
 
   if (!dateVal) {
-    msg.textContent = "⚠️ تکایە ڕێکەوت دیاری بکە"; return;
+    msg.textContent = "⚠️ تکایە ڕێکەوت دیاری بکە"; 
+    return;
+  }
+
+  // Check for future date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selectedDate = new Date(dateVal);
+  if (selectedDate > today) {
+    msg.textContent = "⚠️ ناتوانیت بۆ ڕێکەوتی داهاتوو تۆمار بکەیت!";
+    msg.style.color = "red";
+    setTimeout(() => { msg.textContent = ""; }, 3000);
+    return;
   }
 
   if (countAdult === 0 && countChild === 0) {
@@ -215,9 +381,11 @@ const saveEntry = async function () {
   
   let staffSimpleName = currentUser.email.toLowerCase().split('@')[0];
 
-  // ئاگاداری تۆمارکراوی ئەم ڕۆژە
   const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
   const dayEnd   = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
+  
+  showLoading();
+  
   try {
     const existing = await getDocs(query(
       collection(db, "entries"),
@@ -227,46 +395,46 @@ const saveEntry = async function () {
     ));
     if (!existing.empty) {
       const go = confirm(`⚠️ ئەم ڕۆژە (${dateVal}) پێشتر تۆمار کراوە!\nئایا دەتەوێت دووبارە تۆمار بکەی؟`);
-      if (!go) return;
+      if (!go) {
+        hideLoading();
+        return;
+      }
     }
-  } catch(e) { /* بەردەوامبە */ }
 
-  try {
     await addDoc(collection(db, "entries"), {
       staff      : staffSimpleName,
       countAdult : countAdult,
       countChild : countChild,
-      count      : countAdult + countChild,  // کۆی گشتی بۆ گەڕانی کۆنەکان
+      count      : countAdult + countChild,
       date       : Timestamp.fromDate(dateObj),
       weekNumber : getWeekNumber(dateObj),
     });
+    
     msg.textContent = "✅ بە سەرکەوتوویی پاشکەوت کرا!";
     msg.style.color = "green";
     document.getElementById("patientCountAdult").value = "0";
     document.getElementById("patientCountChild").value = "0";
-    // پەیام دوای ٣ چرکە نەمێنێت
+    todayAlreadySaved = true;
     setTimeout(() => { msg.textContent = ""; }, 3000);
   } catch (e) {
     msg.textContent = "❌ هەڵە: " + e.message;
     msg.style.color = "red";
+  } finally {
+    hideLoading();
   }
 };
 
-// ════════════════════════════════
-//  بەشی ئاماری ڕۆژانە
-// ════════════════════════════════
+// ============================================
+// DAILY STATS
+// ============================================
 async function fetchDailyForCurrentUser() {
   const dateVal = document.getElementById("dailyFilterDate").value;
-  if (!dateVal) {
-    alert("تکایە ڕێکەوتێک هەڵبژێرە");
-    return null;
-  }
+  if (!dateVal) return null;
 
   const parts = dateVal.split('-');
   const selectedDate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
   const nextDay = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
 
-  // هەموو داتاکانی ئەو ڕۆژە دەهێنێت، فلتەری staff لە کۆددا دەکرێت
   return getDocs(query(
     collection(db, "entries"),
     where("date", ">=", Timestamp.fromDate(selectedDate)),
@@ -274,26 +442,30 @@ async function fetchDailyForCurrentUser() {
   ));
 }
 
-const loadDaily = async function () {
+window.loadDaily = async function () {
   const output = document.getElementById("dailyOutput");
 
-  // ئەگەر ئێستا داتا نیشاندراوە، بیشارەوە (toggle)
   if (output.innerHTML.trim() !== "") {
     output.innerHTML = "";
     return;
   }
 
+  showLoading();
   const snap = await fetchDailyForCurrentUser();
-  if (!snap) return;
+  if (!snap) {
+    hideLoading();
+    return;
+  }
 
   if (snap.empty) {
     output.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە بۆ ئەم ڕۆژە</p>";
+    hideLoading();
     return;
   }
 
   const staffName = currentUser.email.toLowerCase().split('@')[0];
 
-  let html = "<table><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th><th>کردارەکان</th></tr>";
+  let html = "<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th><th>کردارەکان</th></tr></thead><tbody>";
   let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
@@ -328,8 +500,9 @@ const loadDaily = async function () {
     </tr>`;
   });
 
-  html += `<tr class="total-row"><td>کۆی گشتی</td><td>${totalAdult}</td><td>${totalChild}</td><td><strong>${totalAll}</strong></td><td>-</td><td>-</td></tr></table>`;
+  html += `<tr class="total-row"><td>کۆی گشتی</td><td>${totalAdult}</td><td>${totalChild}</td><td><strong>${totalAll}</strong></td><td>-</td><td>-</td></tr></tbody></table>`;
   output.innerHTML = html;
+  hideLoading();
 };
 
 window.editEntry = async function(docId, currentAdult, currentChild) {
@@ -345,6 +518,7 @@ window.editEntry = async function(docId, currentAdult, currentChild) {
     return;
   }
 
+  showLoading();
   try {
     await setDoc(doc(db, "entries", docId), { 
       countAdult: adultVal, 
@@ -354,25 +528,32 @@ window.editEntry = async function(docId, currentAdult, currentChild) {
     alert("✅ بە سەرکەوتوویی نوێکرایەوە!");
     loadDaily(); 
     loadWeekly();
+    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") loadMonthly();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
+  } finally {
+    hideLoading();
   }
 };
 
 window.deleteEntry = async function(docId) {
   if (!confirm("دڵنیایت لە سڕینەوەی ئەم تۆمارە؟")) return;
 
+  showLoading();
   try {
     await deleteDoc(doc(db, "entries", docId));
     alert("✅ بە سەرکەوتوویی سڕایەوە!");
     loadDaily();
     loadWeekly();
+    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") loadMonthly();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
+  } finally {
+    hideLoading();
   }
 };
 
-const exportDailyExcel = async function () {
+window.exportDailyExcel = async function () {
   const snap = await fetchDailyForCurrentUser();
   if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -397,7 +578,7 @@ const exportDailyExcel = async function () {
   XLSX.writeFile(wb, `daily_${document.getElementById("dailyFilterDate").value}.xlsx`);
 };
 
-const exportDailyPDF = async function () {
+window.exportDailyPDF = async function () {
   const snap = await fetchDailyForCurrentUser();
   if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -432,16 +613,12 @@ const exportDailyPDF = async function () {
   pdfDoc.save(`daily_${document.getElementById("dailyFilterDate").value}.pdf`);
 };
 
-// ════════════════════════════════
-//  بەشی ئاماری هەفتانە (کۆمبۆبۆکس)
-// ════════════════════════════════
-
-// دۆزینەوەی بەرواری سەرەتا و کۆتایی هەفتەیەک بەپێی ژمارەی هەفتە لە ساڵێکدا
+// ============================================
+// WEEKLY STATS
+// ============================================
 function getDateRangeOfWeek(weekNo, year) {
     let d = new Date(year, 0, 1);
-    let isLeap = new Date(year, 1, 29).getMonth() === 1;
     let days = (weekNo - 1) * 7;
-    // گەر ڕۆژی یەکشەممە سەرەتای هەفتە بێت
     let dayOfWeek = d.getDay(); 
     let offset = -dayOfWeek;
     
@@ -456,9 +633,9 @@ function getDateRangeOfWeek(weekNo, year) {
     return `[ لە ${formatDate(firstDay)} بۆ ${formatDate(lastDay)} ]`;
 }
 
-// پڕکردنەوەی لیستەکە (Select) بە ٥٢ هەفتەی ساڵ
 function populateWeekDropdown() {
     const select = document.getElementById("weekSelector");
+    if (!select) return;
     select.innerHTML = "";
     
     const currentWk = getWeekNumber(new Date());
@@ -472,7 +649,7 @@ function populateWeekDropdown() {
         else if (i === currentWk - 1) labelText = `هەفتەی پێشوو (هەفتەی ${i})`;
         
         option.textContent = labelText;
-        if (i === currentWk) option.selected = true; // خۆکارانە هەفتەی ئێستا هەڵبژێرە
+        if (i === currentWk) option.selected = true;
         
         select.appendChild(option);
     }
@@ -483,7 +660,6 @@ function populateWeekDropdown() {
 function updateDateRangeLabel() {
     const label = document.getElementById("weekDateRangeLabel");
     if(!label) return;
-    
     let dateRange = getDateRangeOfWeek(selectedWeekNumber, currentYear);
     label.textContent = dateRange;
 }
@@ -492,34 +668,33 @@ window.selectWeekFromDropdown = function() {
     const select = document.getElementById("weekSelector");
     selectedWeekNumber = parseInt(select.value);
     updateDateRangeLabel();
-    // پیشاندان تەنها کاتێک دوگمەی "پیشاندان" کلیک بکرێت
 };
 
 async function fetchWeekly() {
-  // تەنها ئەو داتایانە دەهێنێت کە ژمارەی هەفتەکەیان یەکسانە بە هەفتەی هەڵبژێردراو
   return getDocs(query(collection(db, "entries"), where("weekNumber", "==", selectedWeekNumber)));
 }
 
-const loadWeekly = async function () {
+window.loadWeekly = async function () {
   const weeklyOutput = document.getElementById("weeklyOutput");
 
-  // toggle: ئەگەر نیشاندراوە بیشارەوە
   if (weeklyOutput.innerHTML.trim() !== "") {
     weeklyOutput.innerHTML = "";
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     return;
   }
 
+  showLoading();
   const snap = await fetchWeekly();
+  
   if (snap.empty) {
     document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
     if (chartInstance) chartInstance.destroy();
+    hideLoading();
     return;
   }
 
   const staffName = currentUser ? currentUser.email.toLowerCase().split('@')[0] : "";
 
-  // totals: { staffName: { adult, child, dates:[] } }
   const totals = {};
   snap.forEach(d => {
     const x = d.data();
@@ -533,10 +708,11 @@ const loadWeekly = async function () {
   if (Object.keys(totals).length === 0) {
     document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
     if (chartInstance) chartInstance.destroy();
+    hideLoading();
     return;
   }
 
-  let html = "<table><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>بەروارەکان</th></tr>";
+  let html = "<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>بەروارەکان</th></tr></thead><tbody>";
   const chartLabels = [], chartData = [];
   let grandAdult = 0, grandChild = 0;
 
@@ -554,13 +730,14 @@ const loadWeekly = async function () {
     html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td><td>-</td></tr>`;
   }
 
-  html += "</table>";
+  html += "</tbody></table>";
   document.getElementById("weeklyOutput").innerHTML = html;
 
   drawChart(chartLabels, chartData);
+  hideLoading();
 };
 
-const exportWeeklyExcel = async function () {
+window.exportWeeklyExcel = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -585,7 +762,7 @@ const exportWeeklyExcel = async function () {
   XLSX.writeFile(wb, "weekly_stats_detailed.xlsx");
 };
 
-const exportWeeklyPDF = async function () {
+window.exportWeeklyPDF = async function () {
   const snap = await fetchWeekly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
 
@@ -620,12 +797,345 @@ const exportWeeklyPDF = async function () {
   pdfDoc.save("weekly_stats.pdf");
 };
 
-// ════════════════════════════════
-//  بەشی وێنەکێشانی هێڵکاری
-// ════════════════════════════════
+// ============================================
+// MONTHLY STATS
+// ============================================
+function populateMonthDropdown() {
+  const select = document.getElementById("monthSelector");
+  if (!select) return;
+  select.innerHTML = "";
+  
+  const months = [
+    "کانوونی دووەم", "شوبات", "ئازار", "نیسان", "ئایار", "حوزەیران",
+    "تەمموز", "ئاب", "ئەیلول", "تشرینی یەکەم", "تشرینی دووەم", "کانوونی یەکەم"
+  ];
+  
+  const currentMonth = new Date().getMonth();
+  
+  for (let i = 0; i < 12; i++) {
+    let option = document.createElement("option");
+    option.value = i;
+    option.textContent = months[i];
+    if (i === currentMonth) option.selected = true;
+    select.appendChild(option);
+  }
+}
+
+window.selectMonth = function() {
+  loadMonthly();
+};
+
+async function fetchMonthly() {
+  const year = new Date().getFullYear();
+  const month = parseInt(document.getElementById("monthSelector").value);
+  
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0);
+  endDate.setHours(23, 59, 59);
+  
+  return getDocs(query(
+    collection(db, "entries"),
+    where("date", ">=", Timestamp.fromDate(startDate)),
+    where("date", "<=", Timestamp.fromDate(endDate))
+  ));
+}
+
+window.loadMonthly = async function () {
+  const monthlyOutput = document.getElementById("monthlyOutput");
+  
+  if (monthlyOutput.innerHTML.trim() !== "") {
+    monthlyOutput.innerHTML = "";
+    if (monthlyChartInstance) { monthlyChartInstance.destroy(); monthlyChartInstance = null; }
+    return;
+  }
+  
+  showLoading();
+  const snap = await fetchMonthly();
+  
+  if (snap.empty) {
+    monthlyOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم مانگەدا</p>";
+    if (monthlyChartInstance) monthlyChartInstance.destroy();
+    hideLoading();
+    return;
+  }
+  
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const dailyTotals = {};
+  const staffTotals = {};
+  
+  snap.forEach(d => {
+    const x = d.data();
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    
+    const dateStr = x.date.toDate().toLocaleDateString("en-GB");
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    
+    if (!dailyTotals[dateStr]) {
+      dailyTotals[dateStr] = { adult: 0, child: 0 };
+    }
+    dailyTotals[dateStr].adult += adult;
+    dailyTotals[dateStr].child += child;
+    
+    if (!staffTotals[x.staff]) {
+      staffTotals[x.staff] = { adult: 0, child: 0 };
+    }
+    staffTotals[x.staff].adult += adult;
+    staffTotals[x.staff].child += child;
+  });
+  
+  // Staff Summary Table
+  let html = "<h3>📊 پوختەی کارمەندان</h3>";
+  html += "<table><thead><tr><th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th></tr></thead><tbody>";
+  
+  let grandAdult = 0, grandChild = 0;
+  for (const [staff, totals] of Object.entries(staffTotals)) {
+    const total = totals.adult + totals.child;
+    html += `<tr><td>${staff}</td><td>${totals.adult}</td><td>${totals.child}</td><td><strong>${total}</strong></td></tr>`;
+    grandAdult += totals.adult;
+    grandChild += totals.child;
+  }
+  html += `<tr class="total-row"><td>کۆی گشتی</td><td>${grandAdult}</td><td>${grandChild}</td><td><strong>${grandAdult + grandChild}</strong></td></tr>`;
+  html += "</tbody></table>";
+  
+  // Daily breakdown
+  html += "<h3 style='margin-top:20px;'>📅 ڕۆژانە</h3>";
+  html += "<table><thead><tr><th>ڕێکەوت</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th></tr></thead><tbody>";
+  
+  const sortedDates = Object.keys(dailyTotals).sort((a, b) => {
+    const [da, ma, ya] = a.split('/');
+    const [db, mb, yb] = b.split('/');
+    return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+  });
+  
+  for (const date of sortedDates) {
+    const t = dailyTotals[date];
+    html += `<tr><td>${date}</td><td>${t.adult}</td><td>${t.child}</td><td><strong>${t.adult + t.child}</strong></td></tr>`;
+  }
+  html += "</tbody></table>";
+  
+  monthlyOutput.innerHTML = html;
+  
+  // Draw monthly chart (daily trend)
+  const chartLabels = sortedDates;
+  const chartDataAdult = sortedDates.map(d => dailyTotals[d].adult);
+  const chartDataChild = sortedDates.map(d => dailyTotals[d].child);
+  
+  drawMonthlyChart(chartLabels, chartDataAdult, chartDataChild);
+  hideLoading();
+};
+
+function drawMonthlyChart(labels, adultData, childData) {
+  const ctx = document.getElementById("monthlyChart").getContext("2d");
+  if (monthlyChartInstance) monthlyChartInstance.destroy();
+  
+  monthlyChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "🧑 گەورە",
+          data: adultData,
+          borderColor: "rgba(52,152,219,1)",
+          backgroundColor: "rgba(52,152,219,0.1)",
+          tension: 0.3,
+          fill: true
+        },
+        {
+          label: "🧒 منال",
+          data: childData,
+          borderColor: "rgba(46,204,113,1)",
+          backgroundColor: "rgba(46,204,113,0.1)",
+          tension: 0.3,
+          fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        title: { display: true, text: 'ڕەوتی ڕۆژانەی نەخۆشەکان' }
+      }
+    }
+  });
+}
+
+window.exportMonthlyExcel = async function () {
+  const snap = await fetchMonthly();
+  if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
+  
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const data = [["کارمەند", "🧑 گەورە", "🧒 منال", "کۆی گشتی", "ڕێکەوت"]];
+  let grandAdult = 0, grandChild = 0;
+  
+  snap.forEach(d => {
+    const x = d.data();
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
+    grandAdult += adult;
+    grandChild += child;
+  });
+  
+  data.push(["کۆی گشتی", grandAdult, grandChild, grandAdult + grandChild, "-"]);
+  
+  const wb = XLSX.utils.book_new();
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthName = months[parseInt(document.getElementById("monthSelector").value)];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), `monthly_${monthName}`);
+  XLSX.writeFile(wb, `monthly_${monthName}.xlsx`);
+};
+
+window.exportMonthlyPDF = async function () {
+  const snap = await fetchMonthly();
+  if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
+  
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const { jsPDF } = window.jspdf;
+  const pdfDoc = new jsPDF();
+  pdfDoc.setFontSize(14);
+  
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthName = months[parseInt(document.getElementById("monthSelector").value)];
+  pdfDoc.text(`Monthly Statistics - ${monthName}`, 14, 15);
+  
+  const rows = [];
+  let grandAdult = 0, grandChild = 0;
+  snap.forEach(d => {
+    const x = d.data();
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
+    grandAdult += adult;
+    grandChild += child;
+  });
+  
+  rows.push(["Total", grandAdult, grandChild, grandAdult + grandChild, "-"]);
+  
+  pdfDoc.autoTable({
+    head: [["Staff", "Adult", "Child", "Total", "Date"]],
+    body: rows,
+    startY: 25,
+    headStyles: { fillColor: [52, 152, 219] },
+    styles: { fontSize: 8 }
+  });
+  
+  pdfDoc.save(`monthly_${monthName}.pdf`);
+};
+
+// ============================================
+// BACKUP FUNCTION
+// ============================================
+window.backupData = async function () {
+  if (!isCurrentUserAdmin) {
+    alert("تەنها بەڕێوەبەر دەتوانێت بەک‌ئەپ بکات!");
+    return;
+  }
+  
+  showLoading();
+  try {
+    const entriesSnap = await getDocs(collection(db, "entries"));
+    const usersSnap = await getDocs(collection(db, "users"));
+    
+    const backupData = {
+      backupDate: new Date().toISOString(),
+      entries: [],
+      users: []
+    };
+    
+    entriesSnap.forEach(doc => {
+      backupData.entries.push({ id: doc.id, ...doc.data() });
+    });
+    
+    usersSnap.forEach(doc => {
+      backupData.users.push({ id: doc.id, ...doc.data() });
+    });
+    
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `clinic_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    alert("✅ بەک‌ئەپ بە سەرکەوتوویی دروستکرا!");
+  } catch (e) {
+    alert("❌ هەڵە لە دروستکردنی بەک‌ئەپ: " + e.message);
+  } finally {
+    hideLoading();
+  }
+};
+
+window.restoreBackup = function() {
+  const input = document.getElementById("restoreFile");
+  input.click();
+};
+
+window.handleRestore = async function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  if (!isCurrentUserAdmin) {
+    alert("تەنها بەڕێوەبەر دەتوانێت بەک‌ئەپ بەرجەستە بکاتەوە!");
+    return;
+  }
+  
+  const confirmed = confirm("ئاگاداری! ئەمە داتاکانی ئێستا دەسڕێتەوە و داتاکانی بەک‌ئەپەکە دەهێنێتەوە. دڵنیایت؟");
+  if (!confirmed) return;
+  
+  showLoading();
+  try {
+    const text = await file.text();
+    const backupData = JSON.parse(text);
+    
+    // Delete all existing data
+    const entriesSnap = await getDocs(collection(db, "entries"));
+    for (const doc of entriesSnap.docs) {
+      await deleteDoc(doc.ref);
+    }
+    
+    const usersSnap = await getDocs(collection(db, "users"));
+    for (const doc of usersSnap.docs) {
+      if (doc.id !== currentUser.email.toLowerCase()) {
+        await deleteDoc(doc.ref);
+      }
+    }
+    
+    // Restore entries
+    for (const entry of backupData.entries) {
+      const { id, ...data } = entry;
+      await setDoc(doc(db, "entries", id), data);
+    }
+    
+    // Restore users (except current admin)
+    for (const user of backupData.users) {
+      if (user.id !== currentUser.email.toLowerCase()) {
+        await setDoc(doc(db, "users", user.id), user);
+      }
+    }
+    
+    alert("✅ بەک‌ئەپ بە سەرکەوتوویی بەرجەستە کرایەوە!");
+    location.reload();
+  } catch (e) {
+    alert("❌ هەڵە لە بەرجەستەکردنەوە: " + e.message);
+  } finally {
+    hideLoading();
+  }
+};
+
+// ============================================
+// CHARTS
+// ============================================
 function drawChart(labels, data) {
   const ctx = document.getElementById("weeklyChart").getContext("2d");
   if (chartInstance) chartInstance.destroy();
+  
   chartInstance = new Chart(ctx, {
     type: "bar",
     data: {
@@ -633,15 +1143,37 @@ function drawChart(labels, data) {
       datasets: [{
         label: "نەخۆشان",
         data,
-        backgroundColor: "rgba(52,152,219,0.7)"
+        backgroundColor: "rgba(52,152,219,0.7)",
+        borderColor: "rgba(52,152,219,1)",
+        borderWidth: 1
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } }
+      plugins: { 
+        legend: { display: true, position: 'top' },
+        tooltip: { enabled: true }
+      }
     }
   });
 }
+
+window.switchChartType = function(type) {
+  if (!chartInstance) return;
+  
+  const ctx = document.getElementById("weeklyChart").getContext("2d");
+  const currentData = chartInstance.data;
+  if (chartInstance) chartInstance.destroy();
+  
+  chartInstance = new Chart(ctx, {
+    type: type,
+    data: currentData,
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true, position: 'top' } }
+    }
+  });
+};
 
 function getWeekNumber(d) {
   const date = new Date(d);
@@ -651,23 +1183,48 @@ function getWeekNumber(d) {
   return 1 + Math.round(((date - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
 }
 
-// ════════════════════════════════
-// بەستنەوەی دوگمەکان (Event Listeners)
-// ════════════════════════════════
+// ============================================
+// EVENT LISTENERS
+// ============================================
 document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", window.login);
-    if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", logout);
+    if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", window.logout);
+    if(document.getElementById("themeToggle")) document.getElementById("themeToggle").addEventListener("click", window.toggleTheme);
     
-    if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", toggleAdminForm);
-    if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", createStaff);
+    if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", window.toggleAdminForm);
+    if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", window.createStaff);
     
-    if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", saveEntry);
+    if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", window.saveEntry);
     
-    if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", loadDaily);
-    if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", exportDailyExcel);
-    if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", exportDailyPDF);
+    if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", window.loadDaily);
+    if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", window.exportDailyExcel);
+    if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", window.exportDailyPDF);
     
-    if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", loadWeekly);
-    if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", exportWeeklyExcel);
-    if(document.getElementById("btnExportWeeklyPDF")) document.getElementById("btnExportWeeklyPDF").addEventListener("click", exportWeeklyPDF);
+    if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", window.loadWeekly);
+    if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", window.exportWeeklyExcel);
+    if(document.getElementById("btnExportWeeklyPDF")) document.getElementById("btnExportWeeklyPDF").addEventListener("click", window.exportWeeklyPDF);
+    
+    if(document.getElementById("btnLoadMonthly")) document.getElementById("btnLoadMonthly").addEventListener("click", window.loadMonthly);
+    if(document.getElementById("btnExportMonthlyExcel")) document.getElementById("btnExportMonthlyExcel").addEventListener("click", window.exportMonthlyExcel);
+    if(document.getElementById("btnExportMonthlyPDF")) document.getElementById("btnExportMonthlyPDF").addEventListener("click", window.exportMonthlyPDF);
+    if(document.getElementById("monthSelector")) document.getElementById("monthSelector").addEventListener("change", window.selectMonth);
+    
+    if(document.getElementById("searchBtn")) document.getElementById("searchBtn").addEventListener("click", window.searchEntries);
+    if(document.getElementById("searchInput")) document.getElementById("searchInput").addEventListener("keyup", (e) => {
+      if(e.key === 'Enter') window.searchEntries();
+    });
+    
+    if(document.getElementById("backupBtn")) document.getElementById("backupBtn").addEventListener("click", window.backupData);
+    if(document.getElementById("restoreBtn")) document.getElementById("restoreBtn").addEventListener("click", window.restoreBackup);
+    if(document.getElementById("restoreFile")) document.getElementById("restoreFile").addEventListener("change", window.handleRestore);
+    
+    if(document.getElementById("chartTypeBar")) document.getElementById("chartTypeBar").addEventListener("click", () => window.switchChartType('bar'));
+    if(document.getElementById("chartTypeLine")) document.getElementById("chartTypeLine").addEventListener("click", () => window.switchChartType('line'));
+    if(document.getElementById("chartTypePie")) document.getElementById("chartTypePie").addEventListener("click", () => window.switchChartType('pie'));
+    
+    // Disable +/- buttons until module loads
+    document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = true);
+    setTimeout(() => {
+      document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
+    }, 800);
 });
