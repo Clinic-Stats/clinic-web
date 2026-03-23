@@ -185,6 +185,11 @@ const saveEntry = async function () {
   if (!dateVal) {
     msg.textContent = "⚠️ تکایە ڕێکەوت دیاری بکە"; return;
   }
+
+  if (countAdult === 0 && countChild === 0) {
+    msg.textContent = "⚠️ تکایە داتا داخڵ بکە — ژمارەی نەخۆش سفرە!";
+    msg.style.color = "orange"; return;
+  }
   
   const parts = dateVal.split('-');
   const dateObj = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
@@ -235,10 +240,17 @@ async function fetchDailyForCurrentUser() {
 }
 
 const loadDaily = async function () {
+  const output = document.getElementById("dailyOutput");
+
+  // ئەگەر ئێستا داتا نیشاندراوە، بیشارەوە (toggle)
+  if (output.innerHTML.trim() !== "") {
+    output.innerHTML = "";
+    return;
+  }
+
   const snap = await fetchDailyForCurrentUser();
   if (!snap) return;
 
-  const output = document.getElementById("dailyOutput");
   if (snap.empty) {
     output.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە بۆ ئەم ڕۆژە</p>";
     return;
@@ -253,7 +265,6 @@ const loadDaily = async function () {
     const data = d.data();
     const docId = d.id;
 
-    // کارمەند تەنها ئامارى خۆی دەبینێت
     if (!isCurrentUserAdmin && data.staff !== staffName) return;
 
     const adult = data.countAdult ?? data.count ?? 0;
@@ -455,6 +466,15 @@ async function fetchWeekly() {
 }
 
 const loadWeekly = async function () {
+  const weeklyOutput = document.getElementById("weeklyOutput");
+
+  // toggle: ئەگەر نیشاندراوە بیشارەوە
+  if (weeklyOutput.innerHTML.trim() !== "") {
+    weeklyOutput.innerHTML = "";
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    return;
+  }
+
   const snap = await fetchWeekly();
   if (snap.empty) {
     document.getElementById("weeklyOutput").innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
