@@ -159,15 +159,16 @@
       </div>
     </section>
     <!-- بەشی QR Code Generator (تەنها بۆ ئەدمین) -->
-    <section class="card" id="qrCodeSection" style="display:none;">
-      <h2 style="text-align: center;">📱 QR Code بۆ چوونەژوورەوە</h2>
-      <button id="generateQrBtn" style="background: #27ae60;">🔲 دروستکردنی QR Code</button>
-      <div id="qrCodeDisplay" style="text-align: center; margin-top: 20px; display: none;">
-        <div id="qrcode"></div>
-        <p style="margin-top: 10px; font-size: 12px; color: #666;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
-        <button id="downloadQrBtn" style="background: #3498db; width: auto; display: inline-block; margin-top: 10px;">📥 دابەزاندنی وێنە</button>
-      </div>
-    </section>
+ <!-- بەشی QR Code Generator (تەنها بۆ ئەدمین) -->
+<section class="card" id="qrCodeSection" style="display:none;">
+  <h2 style="text-align: center;">📱 QR Code بۆ چوونەژوورەوە</h2>
+  <button id="generateQrBtn" style="background: #27ae60;">🔲 پیشاندانی QR Code</button>
+  <div id="qrCodeDisplay" style="text-align: center; margin-top: 20px; display: none;">
+    <div id="qrcode"></div>
+    <p style="margin-top: 10px; font-size: 12px; color: #666;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
+    <button id="downloadQrBtn" style="background: #3498db; width: auto; display: inline-block; margin-top: 10px;">📥 دابەزاندنی وێنە</button>
+  </div>
+</section>
     <!-- بەشی بەک‌ئەپ (تەنها بۆ ئەدمین) -->
     <section class="card" id="backupSection" style="display:none;">
       <h2 style="text-align: center;">💾 بەک‌ئەپ (Backup)</h2>
@@ -261,66 +262,75 @@
     }
   </style>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = true);
-      
-      // QR Code Generator
-      const generateBtn = document.getElementById("generateQrBtn");
-      const qrDisplay = document.getElementById("qrCodeDisplay");
-      const qrcodeDiv = document.getElementById("qrcode");
-      const downloadBtn = document.getElementById("downloadQrBtn");
-      
-      if (generateBtn) {
-        generateBtn.addEventListener("click", function() {
-          const currentUrl = window.location.href;
-          if (qrcodeDiv) qrcodeDiv.innerHTML = "";
-          
-          if (typeof QRCode !== 'undefined') {
-            new QRCode(qrcodeDiv, {
-              text: currentUrl,
-              width: 200,
-              height: 200,
-              colorDark: "#2c3e50",
-              colorLight: "#ffffff",
-              correctLevel: QRCode.CorrectLevel.H
-            });
-          } else {
-            qrcodeDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}" alt="QR Code" style="width:200px; height:200px;">`;
+<script>
+  // دروستکردنی QR Code کاتێک دوگمە کلیک دەکرێت (تۆگڵ)
+  document.addEventListener("DOMContentLoaded", function() {
+    const generateBtn = document.getElementById("generateQrBtn");
+    const qrDisplay = document.getElementById("qrCodeDisplay");
+    const qrcodeDiv = document.getElementById("qrcode");
+    const downloadBtn = document.getElementById("downloadQrBtn");
+    
+    let qrCreated = false;
+    
+    if (generateBtn && qrDisplay) {
+      generateBtn.addEventListener("click", function() {
+        // ئەگەر QR Code نیشاندراوە، بیشارەوە
+        if (qrDisplay.style.display === "block") {
+          qrDisplay.style.display = "none";
+          generateBtn.innerHTML = "🔲 پیشاندانی QR Code";
+          generateBtn.style.background = "#27ae60";
+        } else {
+          // ئەگەر یەکەم جارە، QR Code دروست بکە
+          if (!qrCreated) {
+            const currentUrl = window.location.href;
+            
+            if (typeof QRCode !== 'undefined') {
+              new QRCode(qrcodeDiv, {
+                text: currentUrl,
+                width: 200,
+                height: 200,
+                colorDark: "#2c3e50",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+              });
+            } else {
+              qrcodeDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}" alt="QR Code" style="width:200px; height:200px;">`;
+            }
+            qrCreated = true;
           }
-          if (qrDisplay) qrDisplay.style.display = "block";
-        });
-      }
-      
-      if (downloadBtn) {
-        downloadBtn.addEventListener("click", function() {
-          const qrImg = qrcodeDiv?.querySelector("img");
-          if (qrImg) {
+          
+          // نیشاندانی بەشی QR Code
+          qrDisplay.style.display = "block";
+          generateBtn.innerHTML = "❌ شاردنەوەی QR Code";
+          generateBtn.style.background = "#e74c3c";
+        }
+      });
+    }
+    
+    // دابەزاندنی وێنەی QR Code
+    if (downloadBtn) {
+      downloadBtn.addEventListener("click", function() {
+        const qrImg = qrcodeDiv.querySelector("img");
+        if (qrImg) {
+          const link = document.createElement("a");
+          link.download = "clinic-qrcode.png";
+          link.href = qrImg.src;
+          link.click();
+        } else {
+          const canvas = qrcodeDiv.querySelector("canvas");
+          if (canvas) {
             const link = document.createElement("a");
             link.download = "clinic-qrcode.png";
-            link.href = qrImg.src;
+            link.href = canvas.toDataURL();
             link.click();
           } else {
-            const canvas = qrcodeDiv?.querySelector("canvas");
-            if (canvas) {
-              const link = document.createElement("a");
-              link.download = "clinic-qrcode.png";
-              link.href = canvas.toDataURL();
-              link.click();
-            } else {
-              alert("تکایە یەکەم جار QR Code دروست بکە");
-            }
+            alert("تکایە یەکەم جار QR Code پیشان بدە");
           }
-        });
-      }
-    });
-    
-    window.addEventListener("load", function() {
-      setTimeout(function() {
-        document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
-      }, 800);
-    });
-  </script>
+        }
+      });
+    }
+  });
+</script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
