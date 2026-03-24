@@ -377,6 +377,63 @@
       }
     });
   </script>
+  
+  <!-- دوگمەی گۆڕینی پاسۆرد بۆ بەکارهێنەر -->
+<script>
+  function addPasswordChangeButton() {
+    const topbar = document.querySelector('.topbar-buttons');
+    if (topbar && !document.getElementById('changeMyPwdBtn')) {
+      const btn = document.createElement('button');
+      btn.id = 'changeMyPwdBtn';
+      btn.innerHTML = '🔐 گۆڕینی پاسۆرد';
+      btn.style.cssText = 'background:#f39c12; width:auto; padding:8px 12px; margin:0;';
+      btn.onclick = async () => {
+        const oldPwd = prompt("🔐 پاسۆردی ئێستات بنووسە:");
+        if (!oldPwd) return;
+        
+        const newPwd = prompt("🔐 پاسۆردی نوێ بنووسە (لانی کەم ٦ پیت):");
+        if (!newPwd || newPwd.length < 6) {
+          alert("پاسۆرد دەبێت لانی کەم ٦ پیت بێت!");
+          return;
+        }
+        
+        const confirmPwd = prompt("🔐 دووبارە پاسۆردی نوێ بنووسە:");
+        if (newPwd !== confirmPwd) {
+          alert("پاسۆردەکان یەکسان نین!");
+          return;
+        }
+        
+        try {
+          // Re-authenticate user
+          const { EmailAuthProvider, reauthenticateWithCredential } = await import("https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js");
+          const credential = EmailAuthProvider.credential(currentUser.email, oldPwd);
+          await reauthenticateWithCredential(currentUser, credential);
+          
+          // Update password
+          await currentUser.updatePassword(newPwd);
+          alert("✅ پاسۆردەکەت بە سەرکەوتوویی گۆڕدرا!");
+        } catch (error) {
+          if (error.code === 'auth/wrong-password') {
+            alert("❌ پاسۆردی ئێستا هەڵەیە!");
+          } else {
+            alert("❌ هەڵە: " + error.message);
+          }
+        }
+      };
+      topbar.insertBefore(btn, topbar.firstChild);
+    }
+  }
+  
+  // بینینی گۆڕانکاری
+  const observer = new MutationObserver(() => {
+    if (document.getElementById('dashboard')?.style.display === 'block') {
+      addPasswordChangeButton();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+</script>
+  
   <script type="module" src="app.js"></script>
 </body>
 </html>
