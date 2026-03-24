@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, setDoc, deleteDoc, enableIndexedDbPersistence, orderBy } 
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword }
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
 // Firebase configuration
@@ -32,6 +32,36 @@ let currentYear = new Date().getFullYear();
 let todayAlreadySaved = false;
 let currentTheme = localStorage.getItem('theme') || 'light';
 let allStaffList = [];
+
+// ============================================
+// MODAL FUNCTIONS
+// ============================================
+window.showModal = function(title, content) {
+  const existingModal = document.getElementById('customModal');
+  if (existingModal) existingModal.remove();
+  
+  const isDark = document.body.classList.contains('dark-mode');
+  const modalHtml = `
+    <div id="customModal" class="modal-overlay">
+      <div class="modal-container" style="background: ${isDark ? '#16213e' : 'white'}; color: ${isDark ? '#eee' : '#2c3e50'};">
+        <h3 style="margin-bottom: 15px;">${title}</h3>
+        <div>${content}</div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  document.getElementById('customModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('customModal')) {
+      window.closeModal();
+    }
+  });
+};
+
+window.closeModal = function() {
+  const modal = document.getElementById('customModal');
+  if (modal) modal.remove();
+};
 
 // ============================================
 // THEME MANAGEMENT
@@ -67,6 +97,22 @@ function hideLoading() {
 }
 
 // ============================================
+// HELPER FUNCTIONS
+// ============================================
+function getWeekNumber(d) {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const w1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+}
+
+function getLocalISODate(dateObj) {
+  const offset = dateObj.getTimezoneOffset() * 60000;
+  return (new Date(dateObj.getTime() - offset)).toISOString().split('T')[0];
+}
+
+// ============================================
 // AUTH STATE
 // ============================================
 onAuthStateChanged(auth, async (user) => {
@@ -93,13 +139,14 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById("adminSection").style.display = "block";
       document.getElementById("searchSection").style.display = "block";
       document.getElementById("backupSection").style.display = "block";
-      document.getElementById("qrCodeSection").style.display = "block"; // 👈 QR Code بەش بۆ ئەدمین
+      document.getElementById("qrCodeSection").style.display = "block";
       await loadStaffList();
+      addUserManagementButton();
     } else {
       document.getElementById("adminSection").style.display = "none";
       document.getElementById("searchSection").style.display = "none";
       document.getElementById("backupSection").style.display = "none";
-      document.getElementById("qrCodeSection").style.display = "none"; // 👈 بۆ ستاف پیشان نەدەرێت
+      document.getElementById("qrCodeSection").style.display = "none";
     }
 
     setTodayDate();
@@ -115,8 +162,24 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById("dashboard").style.display = "none";
   }
 });
+
+// Add User Management Button
+function addUserManagementButton() {
+  const adminSection = document.getElementById('adminSection');
+  const existingBtn = document.getElementById('userManagementBtn');
+  if (adminSection && !existingBtn) {
+    const userMgmtBtn = document.createElement('button');
+    userMgmtBtn.id = 'userManagementBtn';
+    userMgmtBtn.innerHTML = '👥 بەڕێوەبردنی بەکارهێنەران';
+    userMgmtBtn.style.background = '#9b59b6';
+    userMgmtBtn.style.marginBottom = '10px';
+    userMgmtBtn.onclick = window.showUserManagement;
+    adminSection.insertBefore(userMgmtBtn, adminSection.firstChild);
+  }
+}
+
 // ============================================
-// LOAD STAFF LIST FOR ADMIN SEARCH (FIXED)
+// LOAD STAFF LIST
 // ============================================
 async function loadStaffList() {
   try {
@@ -140,134 +203,9 @@ async function loadStaffList() {
         select.appendChild(option);
       });
     }
-    console.log("Staff list loaded:", allStaffList);
   } catch (e) {
     console.error("Error loading staff list:", e);
   }
-}
-
-// ============================================
-// SEARCH BY STAFF (پیشاندانی تەنها تۆمارە ناسفرەکان)
-// ============================================
-window.searchByStaff = async function() {
-  const selectedStaff = document.getElementById("staffSearchSelect").value;
-  const searchOutput = document.getElementById("searchOutput");
-  
-  if (!selectedStaff) {
-    searchOutput.innerHTML = "<p style='text-align:center; color:#888;'>تکایە کارمەندێک هەڵبژێرە</p>";
-    return;
-  }
-
-  showLoading();
-  searchOutput.innerHTML = "<p style='text-align:center;'>⏳ چاوەڕێ بکە... داتا دەهێنرێت</p>";
-  
-  try {
-    console.log("Searching for staff:", selectedStaff);
-    
-    // کوێری بەبێ orderBy - پێویستی بە ئیندێکس نییە
-    const entriesQuery = query(
-      collection(db, "entries"), 
-      where("staff", "==", selectedStaff)
-    );
-    
-    const snap = await getDocs(entriesQuery);
-    console.log("Found entries:", snap.size);
-    
-    if (snap.empty) {
-      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێک نییە بۆ کارمەند "${selectedStaff}"</p>`;
-      hideLoading();
-      return;
-    }
-    
-    // داتاکان کۆبکەرەوە و ڕیزبەندی بکە
-    const entries = [];
-    snap.forEach(doc => {
-      const data = doc.data();
-      const adult = data.countAdult ?? data.count ?? 0;
-      const child = data.countChild ?? 0;
-      const total = adult + child;
-      
-      // 🔴 تەنها تۆمارەکانی کۆی گشتی > 0 زیاد بکە
-      if (total > 0) {
-        entries.push({
-          id: doc.id,
-          adult: adult,
-          child: child,
-          total: total,
-          date: data.date.toDate(),
-          dateStr: data.date.toDate().toLocaleDateString("en-GB")
-        });
-      }
-    });
-    
-    // ڕیزبەندی بە ڕێکەوتی نوێترین لە سەرەوە
-    entries.sort((a, b) => b.date - a.date);
-    
-    // پشکنینی ئەگەر هیچ تۆمارێکی ناسفر نەما
-    if (entries.length === 0) {
-      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێکی ناسفر نییە بۆ کارمەند "${selectedStaff}"</p>`;
-      hideLoading();
-      return;
-    }
-    
-    let html = `<h3 style="margin-bottom: 15px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
-    html += `<div style="overflow-x: auto;">`;
-    html += `<table style="width:100%; border-collapse: collapse;">`;
-    html += `<thead><tr style="background: #3498db; color: white;">
-      <th style="padding: 10px;">#</th>
-      <th style="padding: 10px;">🧑 گەورە</th>
-      <th style="padding: 10px;">🧒 منال</th>
-      <th style="padding: 10px;">کۆی گشتی</th>
-      <th style="padding: 10px;">📅 ڕێکەوت</th>
-      </tr></thead><tbody>`;
-    
-    let totalAdult = 0, totalChild = 0;
-    let index = 1;
-    
-    for (const entry of entries) {
-      totalAdult += entry.adult;
-      totalChild += entry.child;
-      
-      html += `<tr style="border-bottom: 1px solid #eee;">
-        <td style="padding: 8px; text-align: center;">${index++}</td>
-        <td style="padding: 8px; text-align: center;">${entry.adult}</td>
-        <td style="padding: 8px; text-align: center;">${entry.child}</td>
-        <td style="padding: 8px; text-align: center;"><strong>${entry.total}</strong></td>
-        <td style="padding: 8px; text-align: center; direction: ltr;">${entry.dateStr}</td>
-      </tr>`;
-    }
-    
-    html += `<tr style="background: #eaf4fb; font-weight: bold;">
-      <td style="padding: 8px;"><strong>کۆی گشتی</strong></td>
-      <td style="padding: 8px; text-align: center;"><strong>${totalAdult}</strong></td>
-      <td style="padding: 8px; text-align: center;"><strong>${totalChild}</strong></td>
-      <td style="padding: 8px; text-align: center;"><strong>${totalAdult + totalChild}</strong></td>
-      <td style="padding: 8px; text-align: center;">-</td>
-    </tr>`;
-    
-    html += `</tbody></table></div>`;
-    searchOutput.innerHTML = html;
-    
-  } catch (e) {
-    console.error("Search error details:", e);
-    searchOutput.innerHTML = `<p style='color:red; text-align:center;'>❌ هەڵە لە گەڕاندا: ${e.message}</p>`;
-  } finally {
-    hideLoading();
-  }
-};
-
-// ============================================
-// GET LOCAL ISO DATE
-// ============================================
-function getLocalISODate(dateObj) {
-  const offset = dateObj.getTimezoneOffset() * 60000;
-  return (new Date(dateObj.getTime() - offset)).toISOString().split('T')[0];
-}
-
-function setTodayDate() {
-  const todayStr = getLocalISODate(new Date());
-  document.getElementById("entryDate").value = todayStr;
-  document.getElementById("dailyFilterDate").value = todayStr;
 }
 
 // ============================================
@@ -309,6 +247,360 @@ window.logout = async function () {
   showLoading();
   await signOut(auth);
   hideLoading();
+};
+
+// ============================================
+// SET DATE
+// ============================================
+function setTodayDate() {
+  const todayStr = getLocalISODate(new Date());
+  document.getElementById("entryDate").value = todayStr;
+  document.getElementById("dailyFilterDate").value = todayStr;
+}
+// ============================================
+// USER MANAGEMENT PANEL (FOR ADMIN ONLY)
+// ============================================
+
+// Load all users from Firestore
+async function loadAllUsers() {
+  if (!isCurrentUserAdmin) return [];
+  
+  try {
+    const usersSnap = await getDocs(collection(db, "users"));
+    const usersList = [];
+    
+    usersSnap.forEach(doc => {
+      usersList.push({
+        email: doc.id,
+        role: doc.data().role || "staff",
+        createdAt: doc.data().createdAt
+      });
+    });
+    
+    return usersList;
+  } catch (error) {
+    console.error("Error loading users:", error);
+    return [];
+  }
+}
+
+// Show User Management Modal
+window.showUserManagement = async function() {
+  if (!isCurrentUserAdmin) {
+    alert("تەنها بەڕێوەبەر دەتوانێت ئەم بەشە ببینێت!");
+    return;
+  }
+  
+  showLoading();
+  const users = await loadAllUsers();
+  hideLoading();
+  
+  let usersHtml = `
+    <div style="direction: rtl; max-height: 70vh; overflow-y: auto;">
+      <div style="margin-bottom: 20px;">
+        <button onclick="showAddUserForm()" style="background: #27ae60; width: 100%; padding: 12px; font-size: 16px; margin:0;">
+          ➕ زیادکردنی بەکارهێنەری نوێ
+        </button>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+  `;
+  
+  for (const user of users) {
+    const isCurrentUserAdminAccount = user.email === currentUser.email;
+    const createdAtStr = user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString('ku') : '-';
+    
+    usersHtml += `
+      <div class="user-card" style="border: 1px solid #ddd; border-radius: 12px; padding: 15px; background: ${isCurrentUserAdminAccount ? '#fef9e6' : '#fff'};">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="flex: 2;">
+            <div style="font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>👤</span>
+              <span>${user.email}</span>
+            </div>
+            <div style="margin-top: 8px; display: flex; gap: 15px; flex-wrap: wrap;">
+              <span class="role-badge ${user.role === 'admin' ? 'role-admin' : 'role-staff'}">
+                ${user.role === 'admin' ? '👑 ئەدمین' : '👤 ستاف'}
+              </span>
+              <span style="color: #888; font-size: 12px;">
+                📅 ${createdAtStr}
+              </span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button onclick="editUserRole('${user.email}', '${user.role}')" style="width: auto; padding: 6px 12px; margin: 0; background: #f39c12; font-size: 12px;">
+              🔄 گۆڕینی ڕۆڵ
+            </button>
+            <button onclick="showChangePasswordForm('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #3498db; font-size: 12px;">
+              🔐 گۆڕینی پاسۆرد
+            </button>
+            <button onclick="showChangeEmailForm('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #27ae60; font-size: 12px;">
+              ✉️ گۆڕینی ئیمەیڵ
+            </button>
+            ${!isCurrentUserAdminAccount ? `
+              <button onclick="deleteUserAccount('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #e74c3c; font-size: 12px;">
+                🗑️ سڕینەوە
+              </button>
+            ` : '<span style="font-size: 12px; color: #f39c12;">(ئەم ئەکاونتە)</span>'}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  usersHtml += `
+      </div>
+    </div>
+  `;
+  
+  window.showModal('👥 بەڕێوەبردنی بەکارهێنەران', usersHtml);
+};
+
+// Show Add User Form
+window.showAddUserForm = function() {
+  window.closeModal();
+  
+  const formHtml = `
+    <div style="direction: rtl;">
+      <h3 style="margin-bottom: 15px;">➕ زیادکردنی بەکارهێنەری نوێ</h3>
+      
+      <label>ناوی بەکارهێنەر (ئیمەیڵ):</label>
+      <input type="text" id="newUserEmail" placeholder="مثال: naza" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
+      <p style="font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 10px;">🔹 @clinic.com بە شێوەی ئۆتۆماتیکی زیاد دەکرێت</p>
+      
+      <label>پاسۆرد:</label>
+      <input type="password" id="newUserPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
+      
+      <label>ڕۆڵ:</label>
+      <select id="newUserRole" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+        <option value="staff">👤 ستاف (ئاسایی)</option>
+        <option value="admin">👑 ئەدمین (بەڕێوەبەر)</option>
+      </select>
+      
+      <div style="display: flex; gap: 10px;">
+        <button onclick="createNewUser()" style="background: #27ae60; flex: 1; margin:0;">✔️ دروستکردن</button>
+        <button onclick="window.closeModal()" style="background: #95a5a6; flex: 1; margin:0;">❌ پاشگەزبوونەوە</button>
+      </div>
+      <p id="addUserMsg" style="margin-top: 10px; font-size: 12px;"></p>
+    </div>
+  `;
+  
+  window.showModal('➕ زیادکردنی بەکارهێنەر', formHtml);
+};
+
+// Create New User
+window.createNewUser = async function() {
+  let email = document.getElementById('newUserEmail')?.value.trim();
+  const password = document.getElementById('newUserPassword')?.value;
+  const role = document.getElementById('newUserRole')?.value;
+  const msgEl = document.getElementById('addUserMsg');
+  
+  if (!email) {
+    msgEl.textContent = '⚠️ تکایە ناوی بەکارهێنەر بنووسە';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  if (!password || password.length < 6) {
+    msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  if (!email.includes('@')) {
+    email = email + '@clinic.com';
+  }
+  
+  msgEl.textContent = '⏳ چاوەڕێ بکە...';
+  msgEl.style.color = 'orange';
+  showLoading();
+  
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+    
+    await setDoc(doc(db, "users", email), {
+      role: role,
+      createdAt: Timestamp.now()
+    });
+    
+    msgEl.textContent = '✅ بەکارهێنەر بە سەرکەوتوویی دروستکرا!';
+    msgEl.style.color = 'green';
+    
+    setTimeout(() => {
+      window.closeModal();
+      window.showUserManagement();
+    }, 1500);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    msgEl.textContent = '❌ هەڵە: ' + error.message;
+    msgEl.style.color = 'red';
+  } finally {
+    hideLoading();
+  }
+};
+
+// Edit User Role
+window.editUserRole = async function(email, currentRole) {
+  const newRole = currentRole === 'admin' ? 'staff' : 'admin';
+  const roleName = newRole === 'admin' ? 'ئەدمین' : 'ستاف';
+  
+  if (!confirm(`دڵنیایت لە گۆڕینی ڕۆڵی ${email} بۆ "${roleName}"؟`)) return;
+  
+  showLoading();
+  try {
+    await setDoc(doc(db, "users", email), {
+      role: newRole
+    }, { merge: true });
+    
+    alert(`✅ ڕۆڵی ${email} گۆڕدرا بۆ ${roleName}`);
+    window.showUserManagement();
+  } catch (error) {
+    alert('❌ هەڵە: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+};
+
+// Show Change Password Form
+window.showChangePasswordForm = function(email) {
+  window.closeModal();
+  
+  const formHtml = `
+    <div style="direction: rtl;">
+      <h3 style="margin-bottom: 15px;">🔐 گۆڕینی پاسۆرد</h3>
+      <p style="margin-bottom: 15px; color: #3498db;">بەکارهێنەر: <strong>${email}</strong></p>
+      <p style="margin-bottom: 15px; font-size: 12px; color: #e67e22;">📧 لینکی گۆڕینی پاسۆرد بۆ ئیمەیڵی بەکارهێنەر دەنێردرێت</p>
+      
+      <div style="display: flex; gap: 10px;">
+        <button onclick="sendPasswordResetToUser('${email}')" style="background: #27ae60; flex: 1; margin:0;">📧 ناردنی لینک</button>
+        <button onclick="window.closeModal()" style="background: #95a5a6; flex: 1; margin:0;">❌ داخستن</button>
+      </div>
+      <p id="changePwdMsg" style="margin-top: 10px; font-size: 12px;"></p>
+    </div>
+  `;
+  
+  window.showModal('🔐 گۆڕینی پاسۆرد', formHtml);
+};
+
+// Send Password Reset Email
+window.sendPasswordResetToUser = async function(email) {
+  const msgEl = document.getElementById('changePwdMsg');
+  
+  msgEl.textContent = '⏳ چاوەڕێ بکە...';
+  msgEl.style.color = 'orange';
+  showLoading();
+  
+  try {
+    await sendPasswordResetEmail(auth, email);
+    msgEl.textContent = '✅ لینکی گۆڕینی پاسۆرد نێردرا بۆ ئیمەیڵی بەکارهێنەر!';
+    msgEl.style.color = 'green';
+    
+    setTimeout(() => window.closeModal(), 2000);
+  } catch (error) {
+    console.error('Error:', error);
+    if (error.code === 'auth/user-not-found') {
+      msgEl.textContent = '❌ بەکارهێنەر نەدۆزرایەوە';
+    } else {
+      msgEl.textContent = '❌ هەڵە: ' + error.message;
+    }
+    msgEl.style.color = 'red';
+  } finally {
+    hideLoading();
+  }
+};
+
+// Show Change Email Form
+window.showChangeEmailForm = function(oldEmail) {
+  window.closeModal();
+  
+  const formHtml = `
+    <div style="direction: rtl;">
+      <h3 style="margin-bottom: 15px;">✉️ گۆڕینی ئیمەیڵ</h3>
+      <p style="margin-bottom: 15px;">ئیمەیڵی ئێستا: <strong>${oldEmail}</strong></p>
+      
+      <label>ئیمەیڵی نوێ:</label>
+      <input type="email" id="newUserEmailAddress" placeholder="example@clinic.com" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+      
+      <label>پاسۆردی نوێ (بۆ ئەکاونتە نوێیەکە):</label>
+      <input type="password" id="newUserEmailPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+      
+      <div style="display: flex; gap: 10px;">
+        <button onclick="updateUserEmail('${oldEmail}')" style="background: #27ae60; flex: 1; margin:0;">✔️ گۆڕین</button>
+        <button onclick="window.closeModal()" style="background: #95a5a6; flex: 1; margin:0;">❌ داخستن</button>
+      </div>
+      <p id="changeEmailMsg" style="margin-top: 10px; font-size: 12px;"></p>
+      <p style="margin-top: 10px; font-size: 11px; color: #e74c3c;">⚠️ تێبینی: ئەکاونتە کۆنەکە دەسڕێتەوە و ئەکاونتێکی نوێ دروست دەکرێت</p>
+    </div>
+  `;
+  
+  window.showModal('✉️ گۆڕینی ئیمەیڵ', formHtml);
+};
+
+// Update User Email
+window.updateUserEmail = async function(oldEmail) {
+  const newEmail = document.getElementById('newUserEmailAddress')?.value.trim();
+  const newPassword = document.getElementById('newUserEmailPassword')?.value;
+  const msgEl = document.getElementById('changeEmailMsg');
+  
+  if (!newEmail || !newEmail.includes('@')) {
+    msgEl.textContent = '⚠️ تکایە ئیمەیڵێکی دروست بنووسە';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  if (!newPassword || newPassword.length < 6) {
+    msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  msgEl.textContent = '⏳ چاوەڕێ بکە...';
+  msgEl.style.color = 'orange';
+  showLoading();
+  
+  try {
+    const userDoc = await getDoc(doc(db, "users", oldEmail));
+    const userRole = userDoc.exists() ? userDoc.data().role : 'staff';
+    
+    await createUserWithEmailAndPassword(auth, newEmail, newPassword);
+    
+    await setDoc(doc(db, "users", newEmail), {
+      role: userRole,
+      createdAt: Timestamp.now()
+    });
+    
+    await deleteDoc(doc(db, "users", oldEmail));
+    
+    msgEl.textContent = '✅ ئیمەیڵ گۆڕدرا! بەکارهێنەر دەبێت بە ئیمەیڵی نوێ بچێتە ژوورەوە';
+    msgEl.style.color = 'green';
+    
+    setTimeout(() => {
+      window.closeModal();
+      window.showUserManagement();
+    }, 2000);
+  } catch (error) {
+    console.error('Error:', error);
+    msgEl.textContent = '❌ هەڵە: ' + error.message;
+    msgEl.style.color = 'red';
+  } finally {
+    hideLoading();
+  }
+};
+
+// Delete User Account
+window.deleteUserAccount = async function(email) {
+  if (!confirm(`⚠️ دڵنیایت لە سڕینەوەی بەکارهێنەر "${email}"؟\nئەم کردارە گەڕانەوەی نییە!`)) return;
+  
+  showLoading();
+  try {
+    await deleteDoc(doc(db, "users", email));
+    alert(`✅ بەکارهێنەر ${email} سڕایەوە!`);
+    window.showUserManagement();
+  } catch (error) {
+    alert('❌ هەڵە: ' + error.message);
+  } finally {
+    hideLoading();
+  }
 };
 
 // ============================================
@@ -559,7 +851,7 @@ window.loadDaily = async function () {
       <th style="padding: 10px;">کۆی گشتی</th>
       <th style="padding: 10px;">ڕێکەوت</th>
       <th style="padding: 10px;">کردارەکان</th>
-    </tr></thead><tbody>`;
+     </tr></thead><tbody>`;
   let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
@@ -591,7 +883,7 @@ window.loadDaily = async function () {
       <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
       <td style="padding: 8px; text-align: center; direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
       <td style="padding: 8px; text-align: center;">${actionButtons}</td>
-    </tr>`;
+     </tr>`;
   });
 
   if (totalAdult > 0 || totalChild > 0) {
@@ -602,7 +894,7 @@ window.loadDaily = async function () {
       <td style="padding: 8px; text-align: center;"><strong>${totalAll}</strong></td>
       <td style="padding: 8px; text-align: center;">-</td>
       <td style="padding: 8px; text-align: center;">-</td>
-    </tr>`;
+     </tr>`;
   }
   html += `</tbody></table></div>`;
   output.innerHTML = html;
@@ -659,68 +951,109 @@ window.deleteEntry = async function(docId) {
   }
 };
 
-window.exportDailyExcel = async function () {
-  const snap = await fetchDailyForCurrentUser();
-  if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
+// ============================================
+// SEARCH BY STAFF
+// ============================================
+window.searchByStaff = async function() {
+  const selectedStaff = document.getElementById("staffSearchSelect").value;
+  const searchOutput = document.getElementById("searchOutput");
+  
+  if (!selectedStaff) {
+    searchOutput.innerHTML = "<p style='text-align:center; color:#888;'>تکایە کارمەندێک هەڵبژێرە</p>";
+    return;
+  }
 
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
-  const data = [["کارمەند", "🧑 گەورە", "🧒 منال", "کۆی گشتی", "ڕێکەوت"]];
-  let totalAdult = 0, totalChild = 0;
-
-  snap.forEach(d => {
-    const x = d.data();
-    if (!isCurrentUserAdmin && x.staff !== staffName) return;
-    const adult = x.countAdult ?? x.count ?? 0;
-    const child = x.countChild ?? 0;
-    data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
-    totalAdult += adult;
-    totalChild += child;
-  });
-
-  data.push(["کۆی گشتی", totalAdult, totalChild, totalAdult + totalChild, "-"]);
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "ئاماری ڕۆژانە");
-  XLSX.writeFile(wb, `daily_${document.getElementById("dailyFilterDate").value}.xlsx`);
-};
-
-window.exportDailyPDF = async function () {
-  const snap = await fetchDailyForCurrentUser();
-  if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
-
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
-  const { jsPDF } = window.jspdf;
-  const pdfDoc = new jsPDF();
-  pdfDoc.setFontSize(14);
-  pdfDoc.text("Daily Statistics", 14, 15);
-
-  const rows = [];
-  let totalAdult = 0, totalChild = 0;
-  snap.forEach(d => {
-    const x = d.data();
-    if (!isCurrentUserAdmin && x.staff !== staffName) return;
-    const adult = x.countAdult ?? x.count ?? 0;
-    const child = x.countChild ?? 0;
-    rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
-    totalAdult += adult;
-    totalChild += child;
-  });
-
-  rows.push(["Total", totalAdult, totalChild, totalAdult + totalChild, "-"]);
-
-  pdfDoc.autoTable({
-    head: [["Staff", "Adult", "Child", "Total", "Date"]],
-    body: rows,
-    startY: 25,
-    headStyles: { fillColor: [52, 152, 219] },
-    styles: { fontSize: 9 }
-  });
-
-  pdfDoc.save(`daily_${document.getElementById("dailyFilterDate").value}.pdf`);
+  showLoading();
+  searchOutput.innerHTML = "<p style='text-align:center;'>⏳ چاوەڕێ بکە... داتا دەهێنرێت</p>";
+  
+  try {
+    const entriesQuery = query(
+      collection(db, "entries"), 
+      where("staff", "==", selectedStaff)
+    );
+    
+    const snap = await getDocs(entriesQuery);
+    
+    if (snap.empty) {
+      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێک نییە بۆ کارمەند "${selectedStaff}"</p>`;
+      hideLoading();
+      return;
+    }
+    
+    const entries = [];
+    snap.forEach(doc => {
+      const data = doc.data();
+      const adult = data.countAdult ?? data.count ?? 0;
+      const child = data.countChild ?? 0;
+      const total = adult + child;
+      
+      if (total > 0) {
+        entries.push({
+          id: doc.id,
+          adult: adult,
+          child: child,
+          total: total,
+          date: data.date.toDate(),
+          dateStr: data.date.toDate().toLocaleDateString("en-GB")
+        });
+      }
+    });
+    
+    entries.sort((a, b) => b.date - a.date);
+    
+    if (entries.length === 0) {
+      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێکی ناسفر نییە بۆ کارمەند "${selectedStaff}"</p>`;
+      hideLoading();
+      return;
+    }
+    
+    let html = `<h3 style="margin-bottom: 15px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
+    html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
+      <thead><tr style="background: #3498db; color: white;">
+        <th style="padding: 10px;">#</th>
+        <th style="padding: 10px;">🧑 گەورە</th>
+        <th style="padding: 10px;">🧒 منال</th>
+        <th style="padding: 10px;">کۆی گشتی</th>
+        <th style="padding: 10px;">📅 ڕێکەوت</th>
+      </tr></thead><tbody>`;
+    
+    let totalAdult = 0, totalChild = 0;
+    let index = 1;
+    
+    for (const entry of entries) {
+      totalAdult += entry.adult;
+      totalChild += entry.child;
+      
+      html += `<tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 8px; text-align: center;">${index++}</td>
+        <td style="padding: 8px; text-align: center;">${entry.adult}</td>
+        <td style="padding: 8px; text-align: center;">${entry.child}</td>
+        <td style="padding: 8px; text-align: center;"><strong>${entry.total}</strong></td>
+        <td style="padding: 8px; text-align: center; direction: ltr;">${entry.dateStr}</td>
+       </tr>`;
+    }
+    
+    html += `<tr style="background: #eaf4fb; font-weight: bold;">
+      <td style="padding: 8px;"><strong>کۆی گشتی</strong></td>
+      <td style="padding: 8px; text-align: center;"><strong>${totalAdult}</strong></td>
+      <td style="padding: 8px; text-align: center;"><strong>${totalChild}</strong></td>
+      <td style="padding: 8px; text-align: center;"><strong>${totalAdult + totalChild}</strong></td>
+      <td style="padding: 8px; text-align: center;">-</td>
+     </tr>`;
+    
+    html += `</tbody></table></div>`;
+    searchOutput.innerHTML = html;
+    
+  } catch (e) {
+    console.error("Search error details:", e);
+    searchOutput.innerHTML = `<p style='color:red; text-align:center;'>❌ هەڵە لە گەڕاندا: ${e.message}</p>`;
+  } finally {
+    hideLoading();
+  }
 };
 
 // ============================================
-// WEEKLY STATS
+// WEEKLY STATS FUNCTIONS
 // ============================================
 function getDateRangeOfWeek(weekNo, year) {
     let d = new Date(year, 0, 1);
@@ -831,7 +1164,7 @@ window.loadWeekly = async function () {
       <th style="padding: 10px;">🧒 منال</th>
       <th style="padding: 10px;">کۆی گشتی</th>
       <th style="padding: 10px;">بەروارەکان</th>
-    </tr></thead><tbody>`;
+     </tr></thead><tbody>`;
   const chartLabels = [], chartData = [];
   let grandAdult = 0, grandChild = 0;
 
@@ -844,7 +1177,7 @@ window.loadWeekly = async function () {
       <td style="padding: 8px; text-align: center;">${t.child}</td>
       <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
       <td style="padding: 8px; text-align: center; direction: ltr; font-size:12px;">${datesStr}</td>
-    </tr>`;
+     </tr>`;
     chartLabels.push(s);
     chartData.push(total);
     grandAdult += t.adult;
@@ -871,64 +1204,92 @@ window.loadWeekly = async function () {
   hideLoading();
 };
 
-window.exportWeeklyExcel = async function () {
-  const snap = await fetchWeekly();
-  if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
-
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
-  const data = [["کارمەند", "🧑 گەورە", "🧒 منال", "کۆی گشتی", "ڕێکەوت", "ژمارەی هەفتە"]];
-  let grandAdult = 0, grandChild = 0;
-
-  snap.forEach(d => {
-    const x = d.data();
-    if (!isCurrentUserAdmin && x.staff !== staffName) return;
-    const adult = x.countAdult ?? x.count ?? 0;
-    const child = x.countChild ?? 0;
-    data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB"), x.weekNumber]);
-    grandAdult += adult;
-    grandChild += child;
+// ============================================
+// CHARTS
+// ============================================
+function drawChart(labels, data) {
+  const ctx = document.getElementById("weeklyChart").getContext("2d");
+  if (chartInstance) chartInstance.destroy();
+  
+  chartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "نەخۆشان",
+        data,
+        backgroundColor: "rgba(52,152,219,0.7)",
+        borderColor: "rgba(52,152,219,1)",
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { 
+        legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { enabled: true, bodyFont: { size: 11 } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+        x: { ticks: { font: { size: 10 } } }
+      }
+    }
   });
+}
 
-  data.push(["کۆی گشتی", grandAdult, grandChild, grandAdult + grandChild, "-", "-"]);
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "هەفتانە");
-  XLSX.writeFile(wb, "weekly_stats_detailed.xlsx");
-};
-
-window.exportWeeklyPDF = async function () {
-  const snap = await fetchWeekly();
-  if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
-
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
-  const totals = {};
-  snap.forEach(d => {
-    const x = d.data();
-    if (!isCurrentUserAdmin && x.staff !== staffName) return;
-    if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0 };
-    totals[x.staff].adult += x.countAdult ?? x.count ?? 0;
-    totals[x.staff].child += x.countChild ?? 0;
-  });
-
-  const { jsPDF } = window.jspdf;
-  const pdfDoc = new jsPDF();
-  pdfDoc.setFontSize(14);
-  pdfDoc.text("Weekly Statistics (Week " + selectedWeekNumber + ")", 14, 15);
-
-  const rows = [];
-  for (const [s, t] of Object.entries(totals)) {
-    rows.push([s, t.adult, t.child, t.adult + t.child]);
+window.switchChartType = function(type) {
+  if (!chartInstance) return;
+  
+  const currentLabels = chartInstance.data.labels;
+  const currentData = chartInstance.data.datasets[0].data;
+  const ctx = document.getElementById("weeklyChart").getContext("2d");
+  
+  if (chartInstance) chartInstance.destroy();
+  
+  const config = {
+    type: type,
+    data: {
+      labels: currentLabels,
+      datasets: [{
+        label: "نەخۆشان",
+        data: currentData,
+        borderColor: "rgba(52,152,219,1)",
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { 
+        legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { enabled: true, bodyFont: { size: 11 } }
+      }
+    }
+  };
+  
+  if (type === 'pie') {
+    config.data.datasets[0].backgroundColor = [
+      'rgba(52,152,219,0.7)',
+      'rgba(46,204,113,0.7)',
+      'rgba(231,76,60,0.7)',
+      'rgba(241,196,15,0.7)',
+      'rgba(155,89,182,0.7)'
+    ];
+    config.options.plugins.legend.position = 'right';
+  } else if (type === 'bar') {
+    config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.7)";
+    config.options.plugins.legend.position = 'top';
+  } else if (type === 'line') {
+    config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.1)";
+    config.data.datasets[0].fill = true;
+    config.data.datasets[0].tension = 0.3;
+    config.options.plugins.legend.position = 'top';
   }
-
-  pdfDoc.autoTable({
-    head: [["Staff", "Adult", "Child", "Total"]],
-    body: rows,
-    startY: 25,
-    headStyles: { fillColor: [52, 152, 219] },
-    styles: { fontSize: 9 }
-  });
-
-  pdfDoc.save("weekly_stats.pdf");
+  
+  chartInstance = new Chart(ctx, config);
 };
 
 // ============================================
@@ -1021,7 +1382,6 @@ window.loadMonthly = async function () {
     staffTotals[x.staff].child += child;
   });
   
-  // پوختەی کارمەندان - چاککراوە
   let html = "<h3>📊 پوختەی کارمەندان</h3>";
   html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
     <thead><tr style="background: #3498db; color: white;">
@@ -1050,7 +1410,6 @@ window.loadMonthly = async function () {
     <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
    </tr></tbody></table></div>`;
   
-  // ڕۆژانە
   html += "<h3 style='margin-top:20px;'>📅 ڕۆژانە</h3>";
   html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
     <thead><tr style="background: #3498db; color: white;">
@@ -1131,6 +1490,129 @@ function drawMonthlyChart(labels, adultData, childData) {
   });
 }
 
+// ============================================
+// EXPORT FUNCTIONS (Excel & PDF)
+// ============================================
+window.exportDailyExcel = async function () {
+  const snap = await fetchDailyForCurrentUser();
+  if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
+
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const data = [["کارمەند", "🧑 گەورە", "🧒 منال", "کۆی گشتی", "ڕێکەوت"]];
+  let totalAdult = 0, totalChild = 0;
+
+  snap.forEach(d => {
+    const x = d.data();
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
+    totalAdult += adult;
+    totalChild += child;
+  });
+
+  data.push(["کۆی گشتی", totalAdult, totalChild, totalAdult + totalChild, "-"]);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "ئاماری ڕۆژانە");
+  XLSX.writeFile(wb, `daily_${document.getElementById("dailyFilterDate").value}.xlsx`);
+};
+
+window.exportDailyPDF = async function () {
+  const snap = await fetchDailyForCurrentUser();
+  if (!snap || snap.empty) { alert("هیچ داتایەک نییە!"); return; }
+
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const { jsPDF } = window.jspdf;
+  const pdfDoc = new jsPDF();
+  pdfDoc.setFontSize(14);
+  pdfDoc.text("Daily Statistics", 14, 15);
+
+  const rows = [];
+  let totalAdult = 0, totalChild = 0;
+  snap.forEach(d => {
+    const x = d.data();
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    rows.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB")]);
+    totalAdult += adult;
+    totalChild += child;
+  });
+
+  rows.push(["Total", totalAdult, totalChild, totalAdult + totalChild, "-"]);
+
+  pdfDoc.autoTable({
+    head: [["Staff", "Adult", "Child", "Total", "Date"]],
+    body: rows,
+    startY: 25,
+    headStyles: { fillColor: [52, 152, 219] },
+    styles: { fontSize: 9 }
+  });
+
+  pdfDoc.save(`daily_${document.getElementById("dailyFilterDate").value}.pdf`);
+};
+
+window.exportWeeklyExcel = async function () {
+  const snap = await fetchWeekly();
+  if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
+
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const data = [["کارمەند", "🧑 گەورە", "🧒 منال", "کۆی گشتی", "ڕێکەوت", "ژمارەی هەفتە"]];
+  let grandAdult = 0, grandChild = 0;
+
+  snap.forEach(d => {
+    const x = d.data();
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    const adult = x.countAdult ?? x.count ?? 0;
+    const child = x.countChild ?? 0;
+    data.push([x.staff, adult, child, adult + child, x.date.toDate().toLocaleDateString("en-GB"), x.weekNumber]);
+    grandAdult += adult;
+    grandChild += child;
+  });
+
+  data.push(["کۆی گشتی", grandAdult, grandChild, grandAdult + grandChild, "-", "-"]);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "هەفتانە");
+  XLSX.writeFile(wb, "weekly_stats_detailed.xlsx");
+};
+
+window.exportWeeklyPDF = async function () {
+  const snap = await fetchWeekly();
+  if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
+
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const totals = {};
+  snap.forEach(d => {
+    const x = d.data();
+    if (!isCurrentUserAdmin && x.staff !== staffName) return;
+    if (!totals[x.staff]) totals[x.staff] = { adult: 0, child: 0 };
+    totals[x.staff].adult += x.countAdult ?? x.count ?? 0;
+    totals[x.staff].child += x.countChild ?? 0;
+  });
+
+  const { jsPDF } = window.jspdf;
+  const pdfDoc = new jsPDF();
+  pdfDoc.setFontSize(14);
+  pdfDoc.text("Weekly Statistics (Week " + selectedWeekNumber + ")", 14, 15);
+
+  const rows = [];
+  for (const [s, t] of Object.entries(totals)) {
+    rows.push([s, t.adult, t.child, t.adult + t.child]);
+  }
+
+  pdfDoc.autoTable({
+    head: [["Staff", "Adult", "Child", "Total"]],
+    body: rows,
+    startY: 25,
+    headStyles: { fillColor: [52, 152, 219] },
+    styles: { fontSize: 9 }
+  });
+
+  pdfDoc.save("weekly_stats.pdf");
+};
+
 window.exportMonthlyExcel = async function () {
   const snap = await fetchMonthly();
   if (snap.empty) { alert("هیچ داتایەک نییە!"); return; }
@@ -1197,7 +1679,7 @@ window.exportMonthlyPDF = async function () {
 };
 
 // ============================================
-// BACKUP FUNCTION
+// BACKUP FUNCTIONS
 // ============================================
 window.backupData = async function () {
   if (!isCurrentUserAdmin) {
@@ -1295,102 +1777,6 @@ window.handleRestore = async function(event) {
 };
 
 // ============================================
-// CHARTS (SMALLER SIZE)
-// ============================================
-function drawChart(labels, data) {
-  const ctx = document.getElementById("weeklyChart").getContext("2d");
-  if (chartInstance) chartInstance.destroy();
-  
-  chartInstance = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "نەخۆشان",
-        data,
-        backgroundColor: "rgba(52,152,219,0.7)",
-        borderColor: "rgba(52,152,219,1)",
-        borderWidth: 1,
-        borderRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: { 
-        legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
-        tooltip: { enabled: true, bodyFont: { size: 11 } }
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { font: { size: 10 } } },
-        x: { ticks: { font: { size: 10 } } }
-      }
-    }
-  });
-}
-
-window.switchChartType = function(type) {
-  if (!chartInstance) return;
-  
-  const currentLabels = chartInstance.data.labels;
-  const currentData = chartInstance.data.datasets[0].data;
-  const ctx = document.getElementById("weeklyChart").getContext("2d");
-  
-  if (chartInstance) chartInstance.destroy();
-  
-  const config = {
-    type: type,
-    data: {
-      labels: currentLabels,
-      datasets: [{
-        label: "نەخۆشان",
-        data: currentData,
-        borderColor: "rgba(52,152,219,1)",
-        borderWidth: 1,
-        borderRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: { 
-        legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
-        tooltip: { enabled: true, bodyFont: { size: 11 } }
-      }
-    }
-  };
-  
-  if (type === 'pie') {
-    config.data.datasets[0].backgroundColor = [
-      'rgba(52,152,219,0.7)',
-      'rgba(46,204,113,0.7)',
-      'rgba(231,76,60,0.7)',
-      'rgba(241,196,15,0.7)',
-      'rgba(155,89,182,0.7)'
-    ];
-    config.options.plugins.legend.position = 'right';
-  } else if (type === 'bar') {
-    config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.7)";
-    config.options.plugins.legend.position = 'top';
-  } else if (type === 'line') {
-    config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.1)";
-    config.data.datasets[0].fill = true;
-    config.data.datasets[0].tension = 0.3;
-    config.options.plugins.legend.position = 'top';
-  }
-  
-  chartInstance = new Chart(ctx, config);
-};
-
-function getWeekNumber(d) {
-  const date = new Date(d);
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-  const w1 = new Date(date.getFullYear(), 0, 4);
-  return 1 + Math.round(((date - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
-}
-
-// ============================================
 // EVENT LISTENERS
 // ============================================
 document.addEventListener("DOMContentLoaded", () => {
@@ -1426,406 +1812,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("chartTypeLine")) document.getElementById("chartTypeLine").addEventListener("click", () => window.switchChartType('line'));
     if(document.getElementById("chartTypePie")) document.getElementById("chartTypePie").addEventListener("click", () => window.switchChartType('pie'));
     
+    if(document.getElementById("userManagementBtn")) {
+      document.getElementById("userManagementBtn").addEventListener("click", window.showUserManagement);
+    }
+    
     document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = true);
     setTimeout(() => {
       document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
     }, 800);
 });
-
-// ============================================
-// USER MANAGEMENT PANEL (FOR ADMIN ONLY)
-// ============================================
-
-// Load all users from Firebase Auth & Firestore
-async function loadAllUsers() {
-  if (!isCurrentUserAdmin) return [];
-  
-  try {
-    // Get users from Firestore
-    const usersSnap = await getDocs(collection(db, "users"));
-    const usersList = [];
-    
-    usersSnap.forEach(doc => {
-      usersList.push({
-        email: doc.id,
-        role: doc.data().role || "staff",
-        createdAt: doc.data().createdAt
-      });
-    });
-    
-    return usersList;
-  } catch (error) {
-    console.error("Error loading users:", error);
-    return [];
-  }
-}
-
-// Show User Management Modal
-window.showUserManagement = async function() {
-  if (!isCurrentUserAdmin) {
-    alert("تەنها بەڕێوەبەر دەتوانێت ئەم بەشە ببینێت!");
-    return;
-  }
-  
-  showLoading();
-  const users = await loadAllUsers();
-  hideLoading();
-  
-  let usersHtml = `
-    <div style="direction: rtl; max-height: 70vh; overflow-y: auto;">
-      <div style="margin-bottom: 20px;">
-        <button onclick="showAddUserForm()" style="background: #27ae60; width: 100%; padding: 12px; font-size: 16px;">
-          ➕ زیادکردنی بەکارهێنەری نوێ
-        </button>
-      </div>
-      
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-  `;
-  
-  for (const user of users) {
-    const isCurrentUserAdminAccount = user.email === currentUser.email;
-    
-    usersHtml += `
-      <div style="border: 1px solid #ddd; border-radius: 12px; padding: 15px; background: ${isCurrentUserAdminAccount ? '#fef9e6' : '#fff'};">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <div style="flex: 2;">
-            <div style="font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>👤</span>
-              <span id="email_${user.email.replace(/[.@]/g, '_')}">${user.email}</span>
-            </div>
-            <div style="margin-top: 8px; display: flex; gap: 15px; flex-wrap: wrap;">
-              <span style="background: ${user.role === 'admin' ? '#e74c3c' : '#3498db'}; color: white; padding: 2px 10px; border-radius: 20px; font-size: 12px;">
-                ${user.role === 'admin' ? '👑 ئەدمین' : '👤 ستاف'}
-              </span>
-              <span style="color: #888; font-size: 12px;">
-                📅 ${user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString('ku') : '-'}
-              </span>
-            </div>
-          </div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button onclick="editUserRole('${user.email}', '${user.role}')" style="width: auto; padding: 6px 12px; margin: 0; background: #f39c12; font-size: 12px;">
-              🔄 گۆڕینی ڕۆڵ
-            </button>
-            <button onclick="showChangePasswordForm('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #3498db; font-size: 12px;">
-              🔐 گۆڕینی پاسۆرد
-            </button>
-            <button onclick="showChangeEmailForm('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #27ae60; font-size: 12px;">
-              ✉️ گۆڕینی ئیمەیڵ
-            </button>
-            ${!isCurrentUserAdminAccount ? `
-              <button onclick="deleteUserAccount('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #e74c3c; font-size: 12px;">
-                🗑️ سڕینەوە
-              </button>
-            ` : '<span style="font-size: 12px; color: #f39c12;">(ئەم ئەکاونتە)</span>'}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  
-  usersHtml += `
-      </div>
-    </div>
-  `;
-  
-  showModal('👥 بەڕێوەبردنی بەکارهێنەران', usersHtml);
-};
-
-// Show Add User Form
-window.showAddUserForm = function() {
-  closeModal();
-  
-  const formHtml = `
-    <div style="direction: rtl;">
-      <h3 style="margin-bottom: 15px; color: #2c3e50;">➕ زیادکردنی بەکارهێنەری نوێ</h3>
-      
-      <label>ناوی بەکارهێنەر (ئیمەیڵ):</label>
-      <input type="text" id="newUserEmail" placeholder="مثال: naza" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
-      <p style="font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 10px;">🔹 @clinic.com بە شێوەی ئۆتۆماتیکی زیاد دەکرێت</p>
-      
-      <label>پاسۆرد:</label>
-      <input type="password" id="newUserPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
-      
-      <label>ڕۆڵ:</label>
-      <select id="newUserRole" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
-        <option value="staff">👤 ستاف (ئاسایی)</option>
-        <option value="admin">👑 ئەدمین (بەڕێوەبەر)</option>
-      </select>
-      
-      <div style="display: flex; gap: 10px;">
-        <button onclick="createNewUser()" style="background: #27ae60; flex: 1;">✔️ دروستکردن</button>
-        <button onclick="closeModal()" style="background: #95a5a6; flex: 1;">❌ پاشگەزبوونەوە</button>
-      </div>
-      <p id="addUserMsg" style="margin-top: 10px; font-size: 12px;"></p>
-    </div>
-  `;
-  
-  showModal('➕ زیادکردنی بەکارهێنەر', formHtml);
-};
-
-// Create New User
-window.createNewUser = async function() {
-  let email = document.getElementById('newUserEmail')?.value.trim();
-  const password = document.getElementById('newUserPassword')?.value;
-  const role = document.getElementById('newUserRole')?.value;
-  const msgEl = document.getElementById('addUserMsg');
-  
-  if (!email) {
-    msgEl.textContent = '⚠️ تکایە ناوی بەکارهێنەر بنووسە';
-    msgEl.style.color = 'red';
-    return;
-  }
-  
-  if (!password || password.length < 6) {
-    msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
-    msgEl.style.color = 'red';
-    return;
-  }
-  
-  if (!email.includes('@')) {
-    email = email + '@clinic.com';
-  }
-  
-  msgEl.textContent = '⏳ چاوەڕێ بکە...';
-  msgEl.style.color = 'orange';
-  showLoading();
-  
-  try {
-    // Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
-    // Save user role in Firestore
-    await setDoc(doc(db, "users", email), {
-      role: role,
-      createdAt: Timestamp.now()
-    });
-    
-    msgEl.textContent = '✅ بەکارهێنەر بە سەرکەوتوویی دروستکرا!';
-    msgEl.style.color = 'green';
-    
-    setTimeout(() => {
-      closeModal();
-      showUserManagement();
-    }, 1500);
-  } catch (error) {
-    console.error('Error creating user:', error);
-    msgEl.textContent = '❌ هەڵە: ' + error.message;
-    msgEl.style.color = 'red';
-  } finally {
-    hideLoading();
-  }
-};
-
-// Edit User Role
-window.editUserRole = async function(email, currentRole) {
-  const newRole = currentRole === 'admin' ? 'staff' : 'admin';
-  const roleName = newRole === 'admin' ? 'ئەدمین' : 'ستاف';
-  
-  if (!confirm(`دڵنیایت لە گۆڕینی ڕۆڵی ${email} بۆ "${roleName}"؟`)) return;
-  
-  showLoading();
-  try {
-    await setDoc(doc(db, "users", email), {
-      role: newRole
-    }, { merge: true });
-    
-    alert(`✅ ڕۆڵی ${email} گۆڕدرا بۆ ${roleName}`);
-    showUserManagement();
-  } catch (error) {
-    alert('❌ هەڵە: ' + error.message);
-  } finally {
-    hideLoading();
-  }
-};
-
-// Show Change Password Form
-window.showChangePasswordForm = function(email) {
-  closeModal();
-  
-  const formHtml = `
-    <div style="direction: rtl;">
-      <h3 style="margin-bottom: 15px;">🔐 گۆڕینی پاسۆرد</h3>
-      <p style="margin-bottom: 15px; color: #3498db;">بەکارهێنەر: <strong>${email}</strong></p>
-      
-      <label>پاسۆردی نوێ:</label>
-      <input type="password" id="newPwdForUser" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
-      
-      <label>دووبارە پاسۆردی نوێ:</label>
-      <input type="password" id="confirmNewPwdForUser" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
-      
-      <div style="display: flex; gap: 10px;">
-        <button onclick="updateUserPassword('${email}')" style="background: #27ae60; flex: 1;">✔️ گۆڕین</button>
-        <button onclick="closeModal()" style="background: #95a5a6; flex: 1;">❌ داخستن</button>
-      </div>
-      <p id="changePwdMsg" style="margin-top: 10px; font-size: 12px;"></p>
-    </div>
-  `;
-  
-  showModal('🔐 گۆڕینی پاسۆرد', formHtml);
-};
-
-// Update User Password
-window.updateUserPassword = async function(email) {
-  const newPassword = document.getElementById('newPwdForUser')?.value;
-  const confirmPassword = document.getElementById('confirmNewPwdForUser')?.value;
-  const msgEl = document.getElementById('changePwdMsg');
-  
-  if (!newPassword || newPassword.length < 6) {
-    msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
-    msgEl.style.color = 'red';
-    return;
-  }
-  
-  if (newPassword !== confirmPassword) {
-    msgEl.textContent = '⚠️ پاسۆردەکان یەکسان نین';
-    msgEl.style.color = 'red';
-    return;
-  }
-  
-  msgEl.textContent = '⏳ چاوەڕێ بکە...';
-  msgEl.style.color = 'orange';
-  showLoading();
-  
-  try {
-    // Get user by email and update password using Admin SDK requires cloud function
-    // Alternative: We need to use Firebase Admin SDK or send password reset email
-    // Since we can't directly update password from client without re-authentication,
-    // we'll send a password reset email instead
-    
-    await sendPasswordResetEmail(auth, email);
-    msgEl.textContent = '✅ لینکی گۆڕینی پاسۆرد نێردرا بۆ ئیمەیڵی بەکارهێنەر!';
-    msgEl.style.color = 'green';
-    
-    setTimeout(() => closeModal(), 2000);
-  } catch (error) {
-    console.error('Error:', error);
-    msgEl.textContent = '❌ هەڵە: ' + error.message;
-    msgEl.style.color = 'red';
-  } finally {
-    hideLoading();
-  }
-};
-
-// Show Change Email Form
-window.showChangeEmailForm = function(oldEmail) {
-  closeModal();
-  
-  const formHtml = `
-    <div style="direction: rtl;">
-      <h3 style="margin-bottom: 15px;">✉️ گۆڕینی ئیمەیڵ</h3>
-      <p style="margin-bottom: 15px;">ئیمەیڵی ئێستا: <strong>${oldEmail}</strong></p>
-      
-      <label>ئیمەیڵی نوێ:</label>
-      <input type="email" id="newUserEmailAddress" placeholder="example@clinic.com" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
-      
-      <div style="display: flex; gap: 10px;">
-        <button onclick="updateUserEmail('${oldEmail}')" style="background: #27ae60; flex: 1;">✔️ گۆڕین</button>
-        <button onclick="closeModal()" style="background: #95a5a6; flex: 1;">❌ داخستن</button>
-      </div>
-      <p id="changeEmailMsg" style="margin-top: 10px; font-size: 12px;"></p>
-      <p style="margin-top: 10px; font-size: 11px; color: #e74c3c;">⚠️ تێبینی: گۆڕینی ئیمەیڵ پێویستی بە چوونەژوورەوەی دووبارە هەیە</p>
-    </div>
-  `;
-  
-  showModal('✉️ گۆڕینی ئیمەیڵ', formHtml);
-};
-
-// Update User Email
-window.updateUserEmail = async function(oldEmail) {
-  const newEmail = document.getElementById('newUserEmailAddress')?.value.trim();
-  const msgEl = document.getElementById('changeEmailMsg');
-  
-  if (!newEmail || !newEmail.includes('@')) {
-    msgEl.textContent = '⚠️ تکایە ئیمەیڵێکی دروست بنووسە';
-    msgEl.style.color = 'red';
-    return;
-  }
-  
-  msgEl.textContent = '⏳ چاوەڕێ بکە...';
-  msgEl.style.color = 'orange';
-  showLoading();
-  
-  try {
-    // Get user data from Firestore
-    const userDoc = await getDoc(doc(db, "users", oldEmail));
-    const userRole = userDoc.exists() ? userDoc.data().role : 'staff';
-    
-    // Create new user in Auth (can't directly update email from client)
-    // Alternative: Create new user and delete old one
-    const newPassword = prompt('پاسۆردی بەکارهێنەر بنووسە بۆ دروستکردنی ئەکاونتێکی نوێ:');
-    if (!newPassword || newPassword.length < 6) {
-      msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
-      hideLoading();
-      return;
-    }
-    
-    // Create new user
-    await createUserWithEmailAndPassword(auth, newEmail, newPassword);
-    
-    // Save user role
-    await setDoc(doc(db, "users", newEmail), {
-      role: userRole,
-      createdAt: Timestamp.now()
-    });
-    
-    // Delete old user document
-    await deleteDoc(doc(db, "users", oldEmail));
-    
-    msgEl.textContent = '✅ ئیمەیڵ گۆڕدرا! بەکارهێنەر دەبێت بە ئیمەیڵی نوێ بچێتە ژوورەوە';
-    msgEl.style.color = 'green';
-    
-    setTimeout(() => {
-      closeModal();
-      showUserManagement();
-    }, 2000);
-  } catch (error) {
-    console.error('Error:', error);
-    msgEl.textContent = '❌ هەڵە: ' + error.message;
-    msgEl.style.color = 'red';
-  } finally {
-    hideLoading();
-  }
-};
-
-// Delete User Account
-window.deleteUserAccount = async function(email) {
-  if (!confirm(`⚠️ دڵنیایت لە سڕینەوەی بەکارهێنەر "${email}"؟\nئەم کردارە گەڕانەوەی نییە!`)) return;
-  
-  showLoading();
-  try {
-    // Delete from Firestore
-    await deleteDoc(doc(db, "users", email));
-    
-    alert(`✅ بەکارهێنەر ${email} سڕایەوە!`);
-    showUserManagement();
-  } catch (error) {
-    alert('❌ هەڵە: ' + error.message);
-  } finally {
-    hideLoading();
-  }
-};
-
-// Add User Management Button to Admin Panel
-window.addUserManagementButton = function() {
-  const adminSection = document.getElementById('adminSection');
-  if (adminSection && !document.getElementById('userManagementBtn')) {
-    const userMgmtBtn = document.createElement('button');
-    userMgmtBtn.id = 'userManagementBtn';
-    userMgmtBtn.innerHTML = '👥 بەڕێوەبردنی بەکارهێنەران';
-    userMgmtBtn.style.background = '#9b59b6';
-    userMgmtBtn.style.marginBottom = '10px';
-    userMgmtBtn.onclick = window.showUserManagement;
-    adminSection.insertBefore(userMgmtBtn, adminSection.firstChild);
-  }
-};
-
-// Override the onAuthStateChanged to add the button
-const originalAuthHandler = onAuthStateChanged;
-window.onAuthStateChanged = function(callback) {
-  originalAuthHandler(auth, async (user) => {
-    await callback(user);
-    if (user && isCurrentUserAdmin) {
-      setTimeout(() => window.addUserManagementButton(), 500);
-    }
-  });
-};
