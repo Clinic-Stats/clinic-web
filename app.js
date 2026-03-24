@@ -1431,3 +1431,401 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
     }, 800);
 });
+
+// ============================================
+// USER MANAGEMENT PANEL (FOR ADMIN ONLY)
+// ============================================
+
+// Load all users from Firebase Auth & Firestore
+async function loadAllUsers() {
+  if (!isCurrentUserAdmin) return [];
+  
+  try {
+    // Get users from Firestore
+    const usersSnap = await getDocs(collection(db, "users"));
+    const usersList = [];
+    
+    usersSnap.forEach(doc => {
+      usersList.push({
+        email: doc.id,
+        role: doc.data().role || "staff",
+        createdAt: doc.data().createdAt
+      });
+    });
+    
+    return usersList;
+  } catch (error) {
+    console.error("Error loading users:", error);
+    return [];
+  }
+}
+
+// Show User Management Modal
+window.showUserManagement = async function() {
+  if (!isCurrentUserAdmin) {
+    alert("تەنها بەڕێوەبەر دەتوانێت ئەم بەشە ببینێت!");
+    return;
+  }
+  
+  showLoading();
+  const users = await loadAllUsers();
+  hideLoading();
+  
+  let usersHtml = `
+    <div style="direction: rtl; max-height: 70vh; overflow-y: auto;">
+      <div style="margin-bottom: 20px;">
+        <button onclick="showAddUserForm()" style="background: #27ae60; width: 100%; padding: 12px; font-size: 16px;">
+          ➕ زیادکردنی بەکارهێنەری نوێ
+        </button>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+  `;
+  
+  for (const user of users) {
+    const isCurrentUserAdminAccount = user.email === currentUser.email;
+    
+    usersHtml += `
+      <div style="border: 1px solid #ddd; border-radius: 12px; padding: 15px; background: ${isCurrentUserAdminAccount ? '#fef9e6' : '#fff'};">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="flex: 2;">
+            <div style="font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+              <span>👤</span>
+              <span id="email_${user.email.replace(/[.@]/g, '_')}">${user.email}</span>
+            </div>
+            <div style="margin-top: 8px; display: flex; gap: 15px; flex-wrap: wrap;">
+              <span style="background: ${user.role === 'admin' ? '#e74c3c' : '#3498db'}; color: white; padding: 2px 10px; border-radius: 20px; font-size: 12px;">
+                ${user.role === 'admin' ? '👑 ئەدمین' : '👤 ستاف'}
+              </span>
+              <span style="color: #888; font-size: 12px;">
+                📅 ${user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString('ku') : '-'}
+              </span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button onclick="editUserRole('${user.email}', '${user.role}')" style="width: auto; padding: 6px 12px; margin: 0; background: #f39c12; font-size: 12px;">
+              🔄 گۆڕینی ڕۆڵ
+            </button>
+            <button onclick="showChangePasswordForm('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #3498db; font-size: 12px;">
+              🔐 گۆڕینی پاسۆرد
+            </button>
+            <button onclick="showChangeEmailForm('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #27ae60; font-size: 12px;">
+              ✉️ گۆڕینی ئیمەیڵ
+            </button>
+            ${!isCurrentUserAdminAccount ? `
+              <button onclick="deleteUserAccount('${user.email}')" style="width: auto; padding: 6px 12px; margin: 0; background: #e74c3c; font-size: 12px;">
+                🗑️ سڕینەوە
+              </button>
+            ` : '<span style="font-size: 12px; color: #f39c12;">(ئەم ئەکاونتە)</span>'}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  usersHtml += `
+      </div>
+    </div>
+  `;
+  
+  showModal('👥 بەڕێوەبردنی بەکارهێنەران', usersHtml);
+};
+
+// Show Add User Form
+window.showAddUserForm = function() {
+  closeModal();
+  
+  const formHtml = `
+    <div style="direction: rtl;">
+      <h3 style="margin-bottom: 15px; color: #2c3e50;">➕ زیادکردنی بەکارهێنەری نوێ</h3>
+      
+      <label>ناوی بەکارهێنەر (ئیمەیڵ):</label>
+      <input type="text" id="newUserEmail" placeholder="مثال: naza" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
+      <p style="font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 10px;">🔹 @clinic.com بە شێوەی ئۆتۆماتیکی زیاد دەکرێت</p>
+      
+      <label>پاسۆرد:</label>
+      <input type="password" id="newUserPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
+      
+      <label>ڕۆڵ:</label>
+      <select id="newUserRole" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+        <option value="staff">👤 ستاف (ئاسایی)</option>
+        <option value="admin">👑 ئەدمین (بەڕێوەبەر)</option>
+      </select>
+      
+      <div style="display: flex; gap: 10px;">
+        <button onclick="createNewUser()" style="background: #27ae60; flex: 1;">✔️ دروستکردن</button>
+        <button onclick="closeModal()" style="background: #95a5a6; flex: 1;">❌ پاشگەزبوونەوە</button>
+      </div>
+      <p id="addUserMsg" style="margin-top: 10px; font-size: 12px;"></p>
+    </div>
+  `;
+  
+  showModal('➕ زیادکردنی بەکارهێنەر', formHtml);
+};
+
+// Create New User
+window.createNewUser = async function() {
+  let email = document.getElementById('newUserEmail')?.value.trim();
+  const password = document.getElementById('newUserPassword')?.value;
+  const role = document.getElementById('newUserRole')?.value;
+  const msgEl = document.getElementById('addUserMsg');
+  
+  if (!email) {
+    msgEl.textContent = '⚠️ تکایە ناوی بەکارهێنەر بنووسە';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  if (!password || password.length < 6) {
+    msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  if (!email.includes('@')) {
+    email = email + '@clinic.com';
+  }
+  
+  msgEl.textContent = '⏳ چاوەڕێ بکە...';
+  msgEl.style.color = 'orange';
+  showLoading();
+  
+  try {
+    // Create user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // Save user role in Firestore
+    await setDoc(doc(db, "users", email), {
+      role: role,
+      createdAt: Timestamp.now()
+    });
+    
+    msgEl.textContent = '✅ بەکارهێنەر بە سەرکەوتوویی دروستکرا!';
+    msgEl.style.color = 'green';
+    
+    setTimeout(() => {
+      closeModal();
+      showUserManagement();
+    }, 1500);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    msgEl.textContent = '❌ هەڵە: ' + error.message;
+    msgEl.style.color = 'red';
+  } finally {
+    hideLoading();
+  }
+};
+
+// Edit User Role
+window.editUserRole = async function(email, currentRole) {
+  const newRole = currentRole === 'admin' ? 'staff' : 'admin';
+  const roleName = newRole === 'admin' ? 'ئەدمین' : 'ستاف';
+  
+  if (!confirm(`دڵنیایت لە گۆڕینی ڕۆڵی ${email} بۆ "${roleName}"؟`)) return;
+  
+  showLoading();
+  try {
+    await setDoc(doc(db, "users", email), {
+      role: newRole
+    }, { merge: true });
+    
+    alert(`✅ ڕۆڵی ${email} گۆڕدرا بۆ ${roleName}`);
+    showUserManagement();
+  } catch (error) {
+    alert('❌ هەڵە: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+};
+
+// Show Change Password Form
+window.showChangePasswordForm = function(email) {
+  closeModal();
+  
+  const formHtml = `
+    <div style="direction: rtl;">
+      <h3 style="margin-bottom: 15px;">🔐 گۆڕینی پاسۆرد</h3>
+      <p style="margin-bottom: 15px; color: #3498db;">بەکارهێنەر: <strong>${email}</strong></p>
+      
+      <label>پاسۆردی نوێ:</label>
+      <input type="password" id="newPwdForUser" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
+      
+      <label>دووبارە پاسۆردی نوێ:</label>
+      <input type="password" id="confirmNewPwdForUser" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+      
+      <div style="display: flex; gap: 10px;">
+        <button onclick="updateUserPassword('${email}')" style="background: #27ae60; flex: 1;">✔️ گۆڕین</button>
+        <button onclick="closeModal()" style="background: #95a5a6; flex: 1;">❌ داخستن</button>
+      </div>
+      <p id="changePwdMsg" style="margin-top: 10px; font-size: 12px;"></p>
+    </div>
+  `;
+  
+  showModal('🔐 گۆڕینی پاسۆرد', formHtml);
+};
+
+// Update User Password
+window.updateUserPassword = async function(email) {
+  const newPassword = document.getElementById('newPwdForUser')?.value;
+  const confirmPassword = document.getElementById('confirmNewPwdForUser')?.value;
+  const msgEl = document.getElementById('changePwdMsg');
+  
+  if (!newPassword || newPassword.length < 6) {
+    msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  if (newPassword !== confirmPassword) {
+    msgEl.textContent = '⚠️ پاسۆردەکان یەکسان نین';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  msgEl.textContent = '⏳ چاوەڕێ بکە...';
+  msgEl.style.color = 'orange';
+  showLoading();
+  
+  try {
+    // Get user by email and update password using Admin SDK requires cloud function
+    // Alternative: We need to use Firebase Admin SDK or send password reset email
+    // Since we can't directly update password from client without re-authentication,
+    // we'll send a password reset email instead
+    
+    await sendPasswordResetEmail(auth, email);
+    msgEl.textContent = '✅ لینکی گۆڕینی پاسۆرد نێردرا بۆ ئیمەیڵی بەکارهێنەر!';
+    msgEl.style.color = 'green';
+    
+    setTimeout(() => closeModal(), 2000);
+  } catch (error) {
+    console.error('Error:', error);
+    msgEl.textContent = '❌ هەڵە: ' + error.message;
+    msgEl.style.color = 'red';
+  } finally {
+    hideLoading();
+  }
+};
+
+// Show Change Email Form
+window.showChangeEmailForm = function(oldEmail) {
+  closeModal();
+  
+  const formHtml = `
+    <div style="direction: rtl;">
+      <h3 style="margin-bottom: 15px;">✉️ گۆڕینی ئیمەیڵ</h3>
+      <p style="margin-bottom: 15px;">ئیمەیڵی ئێستا: <strong>${oldEmail}</strong></p>
+      
+      <label>ئیمەیڵی نوێ:</label>
+      <input type="email" id="newUserEmailAddress" placeholder="example@clinic.com" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+      
+      <div style="display: flex; gap: 10px;">
+        <button onclick="updateUserEmail('${oldEmail}')" style="background: #27ae60; flex: 1;">✔️ گۆڕین</button>
+        <button onclick="closeModal()" style="background: #95a5a6; flex: 1;">❌ داخستن</button>
+      </div>
+      <p id="changeEmailMsg" style="margin-top: 10px; font-size: 12px;"></p>
+      <p style="margin-top: 10px; font-size: 11px; color: #e74c3c;">⚠️ تێبینی: گۆڕینی ئیمەیڵ پێویستی بە چوونەژوورەوەی دووبارە هەیە</p>
+    </div>
+  `;
+  
+  showModal('✉️ گۆڕینی ئیمەیڵ', formHtml);
+};
+
+// Update User Email
+window.updateUserEmail = async function(oldEmail) {
+  const newEmail = document.getElementById('newUserEmailAddress')?.value.trim();
+  const msgEl = document.getElementById('changeEmailMsg');
+  
+  if (!newEmail || !newEmail.includes('@')) {
+    msgEl.textContent = '⚠️ تکایە ئیمەیڵێکی دروست بنووسە';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  msgEl.textContent = '⏳ چاوەڕێ بکە...';
+  msgEl.style.color = 'orange';
+  showLoading();
+  
+  try {
+    // Get user data from Firestore
+    const userDoc = await getDoc(doc(db, "users", oldEmail));
+    const userRole = userDoc.exists() ? userDoc.data().role : 'staff';
+    
+    // Create new user in Auth (can't directly update email from client)
+    // Alternative: Create new user and delete old one
+    const newPassword = prompt('پاسۆردی بەکارهێنەر بنووسە بۆ دروستکردنی ئەکاونتێکی نوێ:');
+    if (!newPassword || newPassword.length < 6) {
+      msgEl.textContent = '⚠️ پاسۆرد دەبێت لانی کەم ٦ پیت بێت';
+      hideLoading();
+      return;
+    }
+    
+    // Create new user
+    await createUserWithEmailAndPassword(auth, newEmail, newPassword);
+    
+    // Save user role
+    await setDoc(doc(db, "users", newEmail), {
+      role: userRole,
+      createdAt: Timestamp.now()
+    });
+    
+    // Delete old user document
+    await deleteDoc(doc(db, "users", oldEmail));
+    
+    msgEl.textContent = '✅ ئیمەیڵ گۆڕدرا! بەکارهێنەر دەبێت بە ئیمەیڵی نوێ بچێتە ژوورەوە';
+    msgEl.style.color = 'green';
+    
+    setTimeout(() => {
+      closeModal();
+      showUserManagement();
+    }, 2000);
+  } catch (error) {
+    console.error('Error:', error);
+    msgEl.textContent = '❌ هەڵە: ' + error.message;
+    msgEl.style.color = 'red';
+  } finally {
+    hideLoading();
+  }
+};
+
+// Delete User Account
+window.deleteUserAccount = async function(email) {
+  if (!confirm(`⚠️ دڵنیایت لە سڕینەوەی بەکارهێنەر "${email}"؟\nئەم کردارە گەڕانەوەی نییە!`)) return;
+  
+  showLoading();
+  try {
+    // Delete from Firestore
+    await deleteDoc(doc(db, "users", email));
+    
+    alert(`✅ بەکارهێنەر ${email} سڕایەوە!`);
+    showUserManagement();
+  } catch (error) {
+    alert('❌ هەڵە: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+};
+
+// Add User Management Button to Admin Panel
+window.addUserManagementButton = function() {
+  const adminSection = document.getElementById('adminSection');
+  if (adminSection && !document.getElementById('userManagementBtn')) {
+    const userMgmtBtn = document.createElement('button');
+    userMgmtBtn.id = 'userManagementBtn';
+    userMgmtBtn.innerHTML = '👥 بەڕێوەبردنی بەکارهێنەران';
+    userMgmtBtn.style.background = '#9b59b6';
+    userMgmtBtn.style.marginBottom = '10px';
+    userMgmtBtn.onclick = window.showUserManagement;
+    adminSection.insertBefore(userMgmtBtn, adminSection.firstChild);
+  }
+};
+
+// Override the onAuthStateChanged to add the button
+const originalAuthHandler = onAuthStateChanged;
+window.onAuthStateChanged = function(callback) {
+  originalAuthHandler(auth, async (user) => {
+    await callback(user);
+    if (user && isCurrentUserAdmin) {
+      setTimeout(() => window.addUserManagementButton(), 500);
+    }
+  });
+};
