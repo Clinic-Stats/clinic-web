@@ -90,11 +90,11 @@
     <!-- MAIN -->
     <div class="main-wrap">
       <div class="topbar">
+        <span id="currentUserName" class="topbar-user"></span>
+        <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
         <button class="burger" onclick="openSidebar()">
           <span></span><span></span><span></span>
         </button>
-        <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
-        <span id="currentUserName" class="topbar-user"></span>
       </div>
 
       <div class="content-area">
@@ -416,15 +416,28 @@
       justify-content:space-between;align-items:center;
       border-radius:8px;transition:background .2s;
       margin:0;
+      order:3;
     }
     @media(max-width:768px){.burger{display:flex;}}
     .burger span{display:block;width:21px;height:2.5px;background:#2c3e50;border-radius:3px;transition:all .3s;}
     body.dark-mode .burger span{background:#eee;}
     .burger:hover{background:rgba(0,0,0,.05);}
 
-    .page-ttl{flex:1;font-size:16px;font-weight:600;color:#1e2139;}
+    .page-ttl{
+      flex:1;
+      font-size:16px;
+      font-weight:600;
+      color:#1e2139;
+      text-align:center;
+      margin:0;
+      order:2;
+    }
     body.dark-mode .page-ttl{color:#eee;}
-    .topbar-user{font-size:13px;color:#888;}
+    .topbar-user{
+      font-size:13px;
+      color:#888;
+      order:1;
+    }
     @media(max-width:480px){.topbar-user{display:none;}}
 
     /* CONTENT */
@@ -659,7 +672,6 @@
   </script>
   <script type="module" src="app.js"></script>
 
-  <!-- Sync sidebar with auth state -->
   <script type="module">
     // Sync user name to sidebar
     const uObs=new MutationObserver(()=>{

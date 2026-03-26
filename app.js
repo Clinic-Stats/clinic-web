@@ -69,10 +69,12 @@ window.closeModal = function() {
 function applyTheme(theme) {
   if (theme === 'dark') {
     document.body.classList.add('dark-mode');
-    document.getElementById('themeToggle').innerHTML = '☀️';
+    const themeBtn = document.querySelector('.theme-btn');
+    if (themeBtn) themeBtn.textContent = '☀️ Light Mode';
   } else {
     document.body.classList.remove('dark-mode');
-    document.getElementById('themeToggle').innerHTML = '🌙';
+    const themeBtn = document.querySelector('.theme-btn');
+    if (themeBtn) themeBtn.textContent = '🌙 Dark Mode';
   }
   localStorage.setItem('theme', theme);
   currentTheme = theme;
@@ -858,7 +860,7 @@ window.loadDaily = async function () {
       <th style="padding: 10px;">کۆی گشتی</th>
       <th style="padding: 10px;">ڕێکەوت</th>
       <th style="padding: 10px;">کردارەکان</th>
-     </tr></thead><tbody>`;
+      </tr></thead><tbody>`;
   let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
@@ -890,7 +892,7 @@ window.loadDaily = async function () {
       <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
       <td style="padding: 8px; text-align: center; direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
       <td style="padding: 8px; text-align: center;">${actionButtons}</td>
-     </tr>`;
+      </tr>`;
   });
 
   if (totalAdult > 0 || totalChild > 0) {
@@ -901,7 +903,7 @@ window.loadDaily = async function () {
       <td style="padding: 8px; text-align: center;"><strong>${totalAll}</strong></td>
       <td style="padding: 8px; text-align: center;">-</td>
       <td style="padding: 8px; text-align: center;">-</td>
-     </tr>`;
+      </tr>`;
   }
   html += `</tbody></table></div>`;
   output.innerHTML = html;
@@ -1049,7 +1051,7 @@ window.searchByStaff = async function() {
         <td style="padding: 8px; text-align: center;">${entry.child}</td>
         <td style="padding: 8px; text-align: center;"><strong>${entry.total}</strong></td>
         <td style="padding: 8px; text-align: center; direction: ltr;">${entry.dateStr}</td>
-       </tr>`;
+      </tr>`;
     }
     
     html += `<tr style="background: #eaf4fb; font-weight: bold;">
@@ -1058,7 +1060,7 @@ window.searchByStaff = async function() {
       <td style="padding: 8px; text-align: center;"><strong>${totalChild}</strong></td>
       <td style="padding: 8px; text-align: center;"><strong>${totalAdult + totalChild}</strong></td>
       <td style="padding: 8px; text-align: center;">-</td>
-     </tr>`;
+      </tr>`;
     
     html += `</tbody></table></div>`;
     searchOutput.innerHTML = html;
@@ -1126,7 +1128,6 @@ window.selectWeekFromDropdown = function() {
     const select = document.getElementById("weekSelector");
     selectedWeekNumber = parseInt(select.value);
     updateDateRangeLabel();
-    // ئەگەر داتا پیشانی دەدا، یەکسەر ڕیلۆد بکات
     const weeklyOutput = document.getElementById("weeklyOutput");
     if (weeklyOutput && weeklyOutput.innerHTML.trim() !== "") {
       window.loadWeekly();
@@ -1185,7 +1186,7 @@ window.loadWeekly = async function () {
       <th style="padding: 10px;">🧒 منال</th>
       <th style="padding: 10px;">کۆی گشتی</th>
       <th style="padding: 10px;">بەروارەکان</th>
-     </tr></thead><tbody>`;
+      </tr></thead><tbody>`;
   const chartLabels = [], chartData = [];
   let grandAdult = 0, grandChild = 0;
 
@@ -1198,7 +1199,7 @@ window.loadWeekly = async function () {
       <td style="padding: 8px; text-align: center;">${t.child}</td>
       <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
       <td style="padding: 8px; text-align: center; direction: ltr; font-size:12px;">${datesStr}</td>
-     </tr>`;
+      </tr>`;
     chartLabels.push(s);
     chartData.push(total);
     grandAdult += t.adult;
@@ -1212,7 +1213,7 @@ window.loadWeekly = async function () {
       <td style="padding: 8px; text-align: center;">${grandChild}</td>
       <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
       <td style="padding: 8px; text-align: center;">-</td>
-     </tr>`;
+      </tr>`;
   }
 
   html += `</tbody></table></div>`;
@@ -1407,7 +1408,7 @@ window.loadMonthly = async function () {
       <th style="padding: 10px;">🧑 گەورە</th>
       <th style="padding: 10px;">🧒 منال</th>
       <th style="padding: 10px;">کۆی گشتی</th>
-     </tr></thead><tbody>`;
+      </tr></thead><tbody>`;
   
   let grandAdult = 0, grandChild = 0;
   for (const [staff, totals] of Object.entries(staffTotals)) {
@@ -1417,7 +1418,7 @@ window.loadMonthly = async function () {
       <td style="padding: 8px; text-align: center;">${totals.adult}</td>
       <td style="padding: 8px; text-align: center;">${totals.child}</td>
       <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
-     </tr>`;
+      </tr>`;
     grandAdult += totals.adult;
     grandChild += totals.child;
   }
@@ -1426,7 +1427,7 @@ window.loadMonthly = async function () {
     <td style="padding: 8px; text-align: center;">${grandAdult}</td>
     <td style="padding: 8px; text-align: center;">${grandChild}</td>
     <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
-   </tr></tbody></table></div>`;
+    </tr></tbody></table></div>`;
   
   html += "<h3 style='margin-top:20px;'>📅 ڕۆژانە</h3>";
   html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
@@ -1435,7 +1436,7 @@ window.loadMonthly = async function () {
       <th style="padding: 10px;">🧑 گەورە</th>
       <th style="padding: 10px;">🧒 منال</th>
       <th style="padding: 10px;">کۆی گشتی</th>
-     </tr></thead><tbody>`;
+      </tr></thead><tbody>`;
   
   const sortedDates = Object.keys(dailyTotals).sort((a, b) => {
     const [da, ma, ya] = a.split('/');
@@ -1450,7 +1451,7 @@ window.loadMonthly = async function () {
       <td style="padding: 8px; text-align: center;">${t.adult}</td>
       <td style="padding: 8px; text-align: center;">${t.child}</td>
       <td style="padding: 8px; text-align: center;"><strong>${t.adult + t.child}</strong></td>
-     </tr>`;
+      </tr>`;
   }
   html += `</tbody></table></div>`;
   
@@ -1811,7 +1812,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", window.exportDailyExcel);
     if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", window.exportDailyPDF);
     
-    // کاتێک ڕێکەوتی ڕۆژانە گۆڕدرا، یەکسەر ڕیلۆد بکات
     if(document.getElementById("dailyFilterDate")) document.getElementById("dailyFilterDate").addEventListener("change", window.loadDaily);
     
     if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", window.loadWeekly);
