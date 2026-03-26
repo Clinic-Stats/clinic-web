@@ -721,48 +721,76 @@
 
   <!-- Sync sidebar with auth state -->
   <script type="module">
-    // Sync user name to sidebar
-    const uObs=new MutationObserver(()=>{
-      const name=document.getElementById('currentUserName')?.textContent;
-      const sn=document.getElementById('sidebarUserName');
-      if(sn&&name) sn.textContent=name;
-    });
-    const uEl=document.getElementById('currentUserName');
-    if(uEl) uObs.observe(uEl,{childList:true,subtree:true,characterData:true});
 
-    // Show admin nav items when admin section becomes visible
-    const aObs=new MutationObserver(()=>{
-      const a=document.getElementById('adminSection');
-      if(a&&a.style.display!=='none'){
-        ['adminNavLabel','adminNavItem','searchNavItem','qrNavItem','backupNavItem'].forEach(id=>{
-          const el=document.getElementById(id);
-          if(el) el.style.display='';
-        });
-      }
+    // ── 1. Sync username to sidebar ──────────────────────────────────────────
+    const uObs = new MutationObserver(() => {
+      const name = document.getElementById('currentUserName')?.textContent;
+      const sn   = document.getElementById('sidebarUserName');
+      if (sn && name) sn.textContent = name;
     });
-    const aEl=document.getElementById('adminSection');
-    if(aEl) aObs.observe(aEl,{attributes:true,attributeFilter:['style']});
+    const uEl = document.getElementById('currentUserName');
+    if (uEl) uObs.observe(uEl, {childList:true, subtree:true, characterData:true});
 
-    // Patch theme toggle button text (sidebar + topbar)
-    const origT=window.toggleTheme;
-    window.toggleTheme=function(){
-      if(origT) origT();
-      const isDark=document.body.classList.contains('dark-mode');
-      // sidebar button
-      const sideBtn=document.getElementById('themeSidebarBtn');
-      if(sideBtn) sideBtn.textContent=isDark?'☀️ Light Mode':'🌙 Dark Mode';
-      // topbar icon button
-      const topBtn=document.getElementById('themeToggle');
-      if(topBtn) topBtn.textContent=isDark?'☀️':'🌙';
-    };
-    // Also wire logout mobile button properly
-    document.addEventListener('DOMContentLoaded',()=>{
-      const logoutMobile=document.getElementById('btnLogoutMobile');
-      const logoutSidebar=document.getElementById('btnLogout');
-      if(logoutMobile && logoutSidebar){
-        logoutMobile.addEventListener('click',()=>{ if(window.logout) window.logout(); });
+    // ── 2. Admin nav: watch BOTH adminSection AND dashboard visibility ────────
+    function syncAdminNav() {
+      const a = document.getElementById('adminSection');
+      const isAdmin = a && a.style.display !== 'none';
+      ['adminNavLabel','adminNavItem','searchNavItem','qrNavItem','backupNavItem'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isAdmin ? '' : 'none';
+      });
+    }
+
+    // Watch adminSection style changes
+    const adminEl = document.getElementById('adminSection');
+    if (adminEl) {
+      new MutationObserver(syncAdminNav)
+        .observe(adminEl, {attributes:true, attributeFilter:['style']});
+    }
+
+    // Watch dashboard display changes (login/logout cycles)
+    const dashEl = document.getElementById('dashboard');
+    if (dashEl) {
+      new MutationObserver(() => {
+        // small delay so app.js finishes setting admin state
+        setTimeout(syncAdminNav, 300);
+      }).observe(dashEl, {attributes:true, attributeFilter:['style']});
+    }
+
+    // ── 3. Theme toggle — wait for app.js to register window.toggleTheme ─────
+    function syncThemeUI() {
+      const isDark = document.body.classList.contains('dark-mode');
+      const sideBtn = document.getElementById('themeSidebarBtn');
+      const topBtn  = document.getElementById('themeToggle');
+      if (sideBtn) sideBtn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+      if (topBtn)  topBtn.textContent  = isDark ? '☀️' : '🌙';
+    }
+
+    // Poll until app.js exposes window.toggleTheme, then wrap it
+    let patchAttempts = 0;
+    const patchInterval = setInterval(() => {
+      patchAttempts++;
+      if (typeof window.toggleTheme === 'function') {
+        clearInterval(patchInterval);
+        const orig = window.toggleTheme;
+        window.toggleTheme = function() {
+          orig();
+          syncThemeUI();
+        };
+        // Also wire the topbar button directly (in case onclick fires before patch)
+        const topBtn = document.getElementById('themeToggle');
+        if (topBtn) topBtn.onclick = window.toggleTheme;
+        // Sync UI to whatever theme is already saved in localStorage
+        syncThemeUI();
       }
+      if (patchAttempts > 50) clearInterval(patchInterval); // give up after 5s
+    }, 100);
+
+    // Also sync once on DOMContentLoaded in case theme is already applied
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(syncThemeUI, 500);
     });
+
   </script>
 </body>
 </html>
