@@ -761,7 +761,43 @@ async function checkDateSaved(dateVal) {
 // ============================================
 window.changeCount = async function(fieldId, amount) {
   if (amount > 0) {
+    // پشکنین: ئایا ڕێکەوت داهاتووە؟
     const dateVal = document.getElementById("entryDate").value;
+    if (dateVal) {
+      const parts = dateVal.split('-');
+      const chosen = new Date(parts[0], parts[1] - 1, parts[2]);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (chosen > today) {
+        // پەیامی ئاگادارکردنەوە پیشان بدە
+        const msg = document.getElementById("statusMsg");
+        msg.textContent = "⛔ ناتوانیت بۆ ڕێکەوتی داهاتوو تۆمار بکەیت!";
+        msg.style.color = "red";
+        setTimeout(() => { if(msg.textContent.includes('داهاتوو')) msg.textContent = ""; }, 3000);
+
+        // دڵەڕاوکێ (shake) بکە دوگمەی +
+        const btn = document.querySelector(`button[onclick*="${fieldId}"][onclick*="+1"], button[onclick*="${fieldId}"][onclick*="1)"]`);
+        // بجوڵێنە بە ئینپوتەکە
+        const input = document.getElementById(fieldId);
+        if (input) {
+          input.style.transition = "transform 0.1s";
+          const shakes = [6, -6, 5, -5, 3, -3, 0];
+          let i = 0;
+          const shakeInterval = setInterval(() => {
+            input.style.transform = `translateX(${shakes[i]}px)`;
+            i++;
+            if (i >= shakes.length) {
+              clearInterval(shakeInterval);
+              input.style.transform = "translateX(0)";
+            }
+          }, 60);
+        }
+        return;
+      }
+    }
+
+    // پشکنین: ئایا پێشتر تۆمار کراوە؟
     const alreadySaved = await checkDateSaved(dateVal);
     if (alreadySaved) {
       const msg = document.getElementById("statusMsg");
@@ -771,6 +807,7 @@ window.changeCount = async function(fieldId, amount) {
       return;
     }
   }
+
   const input = document.getElementById(fieldId);
   let val = parseInt(input.value);
   if(isNaN(val)) val = 0;
