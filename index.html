@@ -14,19 +14,19 @@
 <body>
 
   <!-- Loading Spinner -->
-  <div id="loadingSpinner" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+  <div id="loadingSpinner" style="display:none;">
     <div class="spinner"></div>
   </div>
 
   <!-- شاشەی چوونەژوورەوە -->
   <div id="loginPage">
     <div class="card login-card">
-      <h1>🏥 چوونە ژوورەوە</h1>
-      <label>ناوی کارمەند:</label>
-      <input type="text" id="loginEmail" placeholder="نموونە: naza" onkeydown="if(event.key === 'Enter') document.getElementById('loginPassword').focus();">
-      <label>پاسوۆرد:</label>
+      <h1>🏥 سیستەمی کلینیک</h1>
+      <label>ناوی کارمەند</label>
+      <input type="text" id="loginEmail" placeholder="ناوی کارمەند یان ئیمەیڵ" onkeydown="if(event.key === 'Enter') document.getElementById('loginPassword').focus();">
+      <label>پاسوۆرد</label>
       <input type="password" id="loginPassword" placeholder="******" onkeydown="if(event.key === 'Enter') window.login();">
-      <button id="btnLogin">چوونەژوورەوە</button>
+      <button id="btnLogin">چوونە ژوورەوە</button>
       <p id="loginError"></p>
     </div>
   </div>
@@ -38,22 +38,22 @@
       <div class="topbar-buttons">
         <button id="themeToggle" class="theme-btn">🌙</button>
         <span id="currentUserName"></span>
-        <button class="logout-btn" id="btnLogout">دەرچوون</button>
+        <button class="logout-btn" id="btnLogout">🚪 دەرچوون</button>
       </div>
     </div>
 
     <!-- بەشی بەڕێوەبەر -->
-    <section class="card admin-panel" id="adminSection" style="display:none; border: 2px solid #e74c3c;">
+    <section class="card admin-panel" id="adminSection" style="display:none;">
       <h2>👑 بەڕێوەبردن</h2>
-      <button id="userManagementBtn" style="background:#9b59b6; margin-bottom:10px;">👥 بەڕێوەبردنی بەکارهێنەران</button>
-      <button id="toggleAdminBtn" style="background:#2c3e50; margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
+      <button id="userManagementBtn" style="background:#8b5cf6; margin-bottom:8px;">👥 بەڕێوەبردنی بەکارهێنەران</button>
+      <button id="toggleAdminBtn" style="background:#334155;">➕ زیادکردنی کارمەندی نوێ</button>
       
-      <div id="adminFormWrapper" style="display:none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-        <label>ناوی کارمەند:</label>
-        <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند بێ بۆشایی">
-        <label>پاسوۆرد:</label>
+      <div id="adminFormWrapper" style="display:none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+        <label>ناوی کارمەند</label>
+        <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند (بێ بۆشایی)">
+        <label>پاسوۆرد</label>
         <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
-        <button id="btnCreateStaff" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
+        <button id="btnCreateStaff" style="background:#ef4444;">تۆمارکردنی کارمەند</button>
         <p id="createStaffMsg"></p>
       </div>
     </section>
@@ -61,62 +61,64 @@
     <!-- بەشی گەڕان (تەنها بۆ ئەدمین) -->
     <section class="card" id="searchSection" style="display:none;">
       <h2>🔍 گەڕان بە پێی کارمەند</h2>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <select id="staffSearchSelect" style="width: 100%; padding: 12px; font-size: 16px; border-radius: 8px;">
-          <option value="">-- هەڵبژێرە کارمەندێک --</option>
-        </select>
-        <p style="font-size: 12px; color: #666;">💡 کارمەندێک هەڵبژێرە، داتاکانی نیشان دەدرێت (تۆمارە سفرەکان نیشان نادرێن)</p>
-      </div>
-      <div id="searchOutput" style="margin-top: 15px; overflow-x: auto;"></div>
+      <select id="staffSearchSelect" style="width: 100%;">
+        <option value="">-- هەڵبژێرە کارمەندێک --</option>
+      </select>
+      <p style="font-size: 12px; color: #64748b; margin-top: 8px;">💡 کارمەندێک هەڵبژێرە، داتاکانی نیشان دەدرێت</p>
+      <div id="searchOutput" style="margin-top: 16px;"></div>
     </section>
 
     <!-- بەشی داخڵکردنی داتا -->
     <section class="card" style="text-align: center;">
       <h2>📝 تۆمارکردنی نەخۆش</h2>
       
-      <label style="margin-top: 15px;">🧑 ژمارەی نەخۆشی گەورە:</label>
-      <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 15px; direction: ltr;">
-        <button type="button" onclick="window.changeCount('patientCountAdult', -1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #e74c3c; border-radius: 8px;">-</button>
-        <input type="number" id="patientCountAdult" value="0" min="0" style="width: 80px !important; height: 45px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 8px;">
-        <button type="button" onclick="window.changeCount('patientCountAdult', 1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #2ecc71; border-radius: 8px;">+</button>
+      <div class="counter-section">
+        <label style="text-align: center;">🧑 نەخۆشی گەورە</label>
+        <div class="counter-wrapper">
+          <button type="button" class="counter-btn minus" onclick="window.changeCount('patientCountAdult', -1)">−</button>
+          <input type="number" id="patientCountAdult" value="0" min="0" class="counter-input">
+          <button type="button" class="counter-btn" onclick="window.changeCount('patientCountAdult', 1)">+</button>
+        </div>
       </div>
 
-      <label style="margin-top: 5px;">🧒 ژمارەی نەخۆشی منال:</label>
-      <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 15px; direction: ltr;">
-        <button type="button" onclick="window.changeCount('patientCountChild', -1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #e74c3c; border-radius: 8px;">-</button>
-        <input type="number" id="patientCountChild" value="0" min="0" style="width: 80px !important; height: 45px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 8px;">
-        <button type="button" onclick="window.changeCount('patientCountChild', 1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #2ecc71; border-radius: 8px;">+</button>
+      <div class="counter-section">
+        <label style="text-align: center;">🧒 نەخۆشی مناڵ</label>
+        <div class="counter-wrapper">
+          <button type="button" class="counter-btn minus" onclick="window.changeCount('patientCountChild', -1)">−</button>
+          <input type="number" id="patientCountChild" value="0" min="0" class="counter-input">
+          <button type="button" class="counter-btn" onclick="window.changeCount('patientCountChild', 1)">+</button>
+        </div>
       </div>
 
-      <label>📅 ڕێکەوت:</label>
-      <input type="date" id="entryDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; border-radius: 8px;">
+      <label>📅 ڕێکەوت</label>
+      <input type="date" id="entryDate" style="text-align: center;">
       
-      <button id="btnSaveEntry" style="width: 100%;">💾 پاشکەوتکردن</button>
-      <p id="statusMsg"></p>
+      <button id="btnSaveEntry" style="background: #10b981;">💾 پاشکەوتکردن</button>
+      <p id="statusMsg" style="margin-top: 12px;"></p>
     </section>
 
     <!-- بەشی ئاماری ڕۆژانە -->
-    <section class="card" style="text-align: center;">
+    <section class="card">
       <h2>📅 ئاماری ڕۆژانە</h2>
-      <label>ڕێکەوت هەڵبژێرە:</label>
-      <input type="date" id="dailyFilterDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; border-radius: 8px;">
+      <label>ڕێکەوت</label>
+      <input type="date" id="dailyFilterDate" style="text-align: center;">
       
       <div class="button-group">
         <button id="btnLoadDaily">👁️ پیشاندان</button>
         <button id="btnExportDailyExcel" class="btn-excel">📊 Excel</button>
         <button id="btnExportDailyPDF" class="btn-pdf">📄 PDF</button>
       </div>
-      <div id="dailyOutput" style="margin-top: 15px; overflow-x: auto;"></div>
+      <div id="dailyOutput" style="margin-top: 16px;"></div>
     </section>
 
     <!-- بەشی ئاماری هەفتانە -->
     <section class="card">
-      <h2 style="text-align: center;">📆 ئاماری هەفتانە</h2>
+      <h2>📆 ئاماری هەفتانە</h2>
       
-      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 15px; border-radius: 8px; gap: 10px;">
-          <select id="weekSelector" onchange="window.selectWeekFromDropdown()" style="width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; font-weight: bold; text-align: center;">
-          </select>
-          <div id="weekDateRangeLabel" style="font-size: 0.9em; color: #555; text-align: center;"></div>
+      <div style="margin-bottom: 16px;">
+        <select id="weekSelector" onchange="window.selectWeekFromDropdown()" style="width: 100%;">
+        </select>
+        <div id="weekDateRangeLabel" style="font-size: 12px; color: #64748b; text-align: center; margin-top: 8px;"></div>
       </div>
 
       <div class="button-group">
@@ -125,25 +127,25 @@
         <button id="btnExportWeeklyPDF" class="btn-pdf">📄 PDF</button>
       </div>
       
-      <div style="margin: 15px 0; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <button id="chartTypeBar" style="width: auto; padding: 8px 20px;">📊 Bar</button>
-        <button id="chartTypeLine" style="width: auto; padding: 8px 20px;">📈 Line</button>
-        <button id="chartTypePie" style="width: auto; padding: 8px 20px;">🥧 Pie</button>
+      <div style="margin: 12px 0; display: flex; gap: 8px; justify-content: center;">
+        <button id="chartTypeBar" style="width: auto; padding: 8px 16px; background: #3b82f6;">📊 Bar</button>
+        <button id="chartTypeLine" style="width: auto; padding: 8px 16px; background: #8b5cf6;">📈 Line</button>
+        <button id="chartTypePie" style="width: auto; padding: 8px 16px; background: #ec489a;">🥧 Pie</button>
       </div>
       
-      <div id="weeklyOutput" style="overflow-x: auto;"></div>
+      <div id="weeklyOutput"></div>
       <div id="weeklyChartContainer" style="margin-top: 20px; display: none;">
-        <canvas id="weeklyChart" height="250"></canvas>
+        <canvas id="weeklyChart" height="220"></canvas>
       </div>
     </section>
 
     <!-- بەشی ئاماری مانگانە -->
     <section class="card">
-      <h2 style="text-align: center;">📅 ئاماری مانگانە</h2>
+      <h2>📅 ئاماری مانگانە</h2>
       
-      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 15px; border-radius: 8px;">
-          <select id="monthSelector" onchange="window.selectMonth()" style="width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; font-weight: bold; text-align: center;">
-          </select>
+      <div style="margin-bottom: 16px;">
+        <select id="monthSelector" onchange="window.selectMonth()" style="width: 100%;">
+        </select>
       </div>
 
       <div class="button-group">
@@ -152,168 +154,34 @@
         <button id="btnExportMonthlyPDF" class="btn-pdf">📄 PDF</button>
       </div>
       
-      <div id="monthlyOutput" style="overflow-x: auto;"></div>
+      <div id="monthlyOutput"></div>
       <div id="monthlyChartContainer" style="margin-top: 20px; display: none;">
-        <canvas id="monthlyChart" height="250"></canvas>
+        <canvas id="monthlyChart" height="220"></canvas>
       </div>
     </section>
 
     <!-- بەشی QR Code Generator (تەنها بۆ ئەدمین) -->
     <section class="card" id="qrCodeSection" style="display:none;">
-      <h2 style="text-align: center;">📱 QR Code بۆ چوونەژوورەوە</h2>
-      <button id="generateQrBtn" style="background: #27ae60;">🔲 پیشاندانی QR Code</button>
+      <h2>📱 QR Code بۆ چوونەژوورەوە</h2>
+      <button id="generateQrBtn" style="background: #10b981;">🔲 پیشاندانی QR Code</button>
       <div id="qrCodeDisplay" style="text-align: center; margin-top: 20px; display: none;">
         <div id="qrcode"></div>
-        <p style="margin-top: 10px; font-size: 12px; color: #666;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
-        <button id="downloadQrBtn" style="background: #3498db; width: auto; display: inline-block; margin-top: 10px;">📥 دابەزاندنی وێنە</button>
+        <p style="margin-top: 10px; font-size: 12px;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
+        <button id="downloadQrBtn" style="background: #3b82f6; width: auto; display: inline-block; margin-top: 10px;">📥 دابەزاندنی وێنە</button>
       </div>
     </section>
 
     <!-- بەشی بەک‌ئەپ (تەنها بۆ ئەدمین) -->
     <section class="card" id="backupSection" style="display:none;">
-      <h2 style="text-align: center;">💾 بەک‌ئەپ (Backup)</h2>
+      <h2>💾 بەک‌ئەپ (Backup)</h2>
       <div class="button-group">
-        <button id="backupBtn" class="btn-excel" style="background:#27ae60 !important;">📥 دابەزاندنی بەک‌ئەپ</button>
-        <button id="restoreBtn" class="btn-pdf" style="background:#e67e22 !important;">📤 بەرجەستەکردنەوە</button>
+        <button id="backupBtn" class="btn-excel" style="background:#10b981 !important;">📥 دابەزاندنی بەک‌ئەپ</button>
+        <button id="restoreBtn" class="btn-pdf" style="background:#f59e0b !important;">📤 بەرجەستەکردنەوە</button>
       </div>
       <input type="file" id="restoreFile" style="display:none;" accept=".json">
-      <p style="font-size: 12px; color: #666; text-align: center; margin-top: 10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
+      <p style="font-size: 12px; text-align: center; margin-top: 10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
     </section>
   </div>
-
-  <style>
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .topbar-buttons {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      flex-wrap: wrap;
-    }
-    .theme-btn {
-      background: transparent;
-      border: 1px solid white;
-      width: auto;
-      padding: 5px 10px;
-      margin: 0;
-      font-size: 18px;
-    }
-    .theme-btn:hover {
-      background: rgba(255,255,255,0.2);
-    }
-    @media (max-width: 768px) {
-      .card {
-        margin: 10px;
-        padding: 15px;
-      }
-      button {
-        padding: 12px;
-        font-size: 14px;
-      }
-      table {
-        font-size: 12px;
-      }
-      th, td {
-        padding: 6px;
-      }
-      .button-group {
-        flex-wrap: wrap;
-      }
-      .button-group button {
-        flex: 1;
-        min-width: 80px;
-      }
-      .topbar {
-        flex-direction: column;
-        text-align: center;
-      }
-      .topbar-buttons {
-        justify-content: center;
-      }
-    }
-    #weeklyChart, #monthlyChart {
-      max-height: 200px !important;
-      height: 200px !important;
-      width: 100% !important;
-    }
-    #weeklyChartContainer, #monthlyChartContainer {
-      max-height: 220px;
-      margin: 10px 0;
-    }
-    @media (max-width: 768px) {
-      #weeklyChart, #monthlyChart {
-        max-height: 160px !important;
-        height: 160px !important;
-      }
-      #weeklyChartContainer, #monthlyChartContainer {
-        max-height: 180px;
-      }
-    }
-    /* Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 10000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-container {
-      background: white;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      padding: 20px;
-    }
-    body.dark-mode .modal-container {
-      background: #16213e;
-      color: #eee;
-    }
-    .user-card {
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 12px;
-      transition: all 0.2s;
-    }
-    body.dark-mode .user-card {
-      border-color: #333;
-    }
-    .user-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .role-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: bold;
-    }
-    .role-admin {
-      background: #e74c3c;
-      color: white;
-    }
-    .role-staff {
-      background: #3498db;
-      color: white;
-    }
-  </style>
 
   <script>
     // QR Code Generator
@@ -329,7 +197,7 @@
           if (qrDisplay.style.display === "block") {
             qrDisplay.style.display = "none";
             generateBtn.innerHTML = "🔲 پیشاندانی QR Code";
-            generateBtn.style.background = "#27ae60";
+            generateBtn.style.background = "#10b981";
           } else {
             if (!qrCreated) {
               const currentUrl = window.location.href;
@@ -338,7 +206,7 @@
                   text: currentUrl,
                   width: 200,
                   height: 200,
-                  colorDark: "#2c3e50",
+                  colorDark: "#1e293b",
                   colorLight: "#ffffff",
                   correctLevel: QRCode.CorrectLevel.H
                 });
@@ -349,7 +217,7 @@
             }
             qrDisplay.style.display = "block";
             generateBtn.innerHTML = "❌ شاردنەوەی QR Code";
-            generateBtn.style.background = "#e74c3c";
+            generateBtn.style.background = "#ef4444";
           }
         });
       }
