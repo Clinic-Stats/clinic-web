@@ -154,6 +154,17 @@ onAuthStateChanged(auth, async (user) => {
     populateMonthDropdown();
     checkTodaySaved();
     applyTheme(currentTheme);
+    
+    // پاک کردنەوەی outputەکانی کۆن کاتی چوونەژووردەوەی نوێ
+    const outputIds = ["dailyOutput", "weeklyOutput", "monthlyOutput", "searchOutput"];
+    outputIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = "";
+    });
+    const weeklyChart = document.getElementById("weeklyChartContainer");
+    if (weeklyChart) weeklyChart.style.display = "none";
+    const monthlyChart = document.getElementById("monthlyChartContainer");
+    if (monthlyChart) monthlyChart.style.display = "none";
   } else {
     currentUser = null;
     isCurrentUserAdmin = false;
@@ -822,11 +833,7 @@ async function fetchDailyForCurrentUser() {
 
 window.loadDaily = async function () {
   const output = document.getElementById("dailyOutput");
-
-  if (output.innerHTML.trim() !== "") {
-    output.innerHTML = "";
-    return;
-  }
+  output.innerHTML = "";
 
   showLoading();
   const snap = await fetchDailyForCurrentUser();
@@ -922,9 +929,15 @@ window.editEntry = async function(docId, currentAdult, currentChild) {
       count: adultVal + childVal
     }, { merge: true });
     alert("✅ بە سەرکەوتوویی نوێکرایەوە!");
+    document.getElementById("dailyOutput").innerHTML = "";
+    document.getElementById("weeklyOutput").innerHTML = "";
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     loadDaily(); 
     loadWeekly();
-    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") loadMonthly();
+    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") {
+      document.getElementById("monthlyOutput").innerHTML = "";
+      loadMonthly();
+    }
     if (isCurrentUserAdmin && document.getElementById("staffSearchSelect").value) searchByStaff();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
@@ -940,9 +953,15 @@ window.deleteEntry = async function(docId) {
   try {
     await deleteDoc(doc(db, "entries", docId));
     alert("✅ بە سەرکەوتوویی سڕایەوە!");
+    document.getElementById("dailyOutput").innerHTML = "";
+    document.getElementById("weeklyOutput").innerHTML = "";
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     loadDaily();
     loadWeekly();
-    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") loadMonthly();
+    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") {
+      document.getElementById("monthlyOutput").innerHTML = "";
+      loadMonthly();
+    }
     if (isCurrentUserAdmin && document.getElementById("staffSearchSelect").value) searchByStaff();
   } catch (e) {
     alert("❌ هەڵە: " + e.message);
@@ -1107,6 +1126,11 @@ window.selectWeekFromDropdown = function() {
     const select = document.getElementById("weekSelector");
     selectedWeekNumber = parseInt(select.value);
     updateDateRangeLabel();
+    // ئەگەر داتا پیشانی دەدا، یەکسەر ڕیلۆد بکات
+    const weeklyOutput = document.getElementById("weeklyOutput");
+    if (weeklyOutput && weeklyOutput.innerHTML.trim() !== "") {
+      window.loadWeekly();
+    }
 };
 
 async function fetchWeekly() {
@@ -1117,12 +1141,9 @@ window.loadWeekly = async function () {
   const weeklyOutput = document.getElementById("weeklyOutput");
   const chartContainer = document.getElementById("weeklyChartContainer");
 
-  if (weeklyOutput.innerHTML.trim() !== "") {
-    weeklyOutput.innerHTML = "";
-    if (chartContainer) chartContainer.style.display = "none";
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-    return;
-  }
+  weeklyOutput.innerHTML = "";
+  if (chartContainer) chartContainer.style.display = "none";
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
   showLoading();
   const snap = await fetchWeekly();
@@ -1338,13 +1359,10 @@ async function fetchMonthly() {
 window.loadMonthly = async function () {
   const monthlyOutput = document.getElementById("monthlyOutput");
   const monthlyChartContainer = document.getElementById("monthlyChartContainer");
-  
-  if (monthlyOutput.innerHTML.trim() !== "") {
-    monthlyOutput.innerHTML = "";
-    if (monthlyChartContainer) monthlyChartContainer.style.display = "none";
-    if (monthlyChartInstance) { monthlyChartInstance.destroy(); monthlyChartInstance = null; }
-    return;
-  }
+
+  monthlyOutput.innerHTML = "";
+  if (monthlyChartContainer) monthlyChartContainer.style.display = "none";
+  if (monthlyChartInstance) { monthlyChartInstance.destroy(); monthlyChartInstance = null; }
   
   showLoading();
   const snap = await fetchMonthly();
@@ -1792,6 +1810,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", window.loadDaily);
     if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", window.exportDailyExcel);
     if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", window.exportDailyPDF);
+    
+    // کاتێک ڕێکەوتی ڕۆژانە گۆڕدرا، یەکسەر ڕیلۆد بکات
+    if(document.getElementById("dailyFilterDate")) document.getElementById("dailyFilterDate").addEventListener("change", window.loadDaily);
     
     if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", window.loadWeekly);
     if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", window.exportWeeklyExcel);
