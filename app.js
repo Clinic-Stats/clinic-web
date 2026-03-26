@@ -154,8 +154,7 @@ onAuthStateChanged(auth, async (user) => {
     populateMonthDropdown();
     checkTodaySaved();
     applyTheme(currentTheme);
-    const themeBtn = document.querySelector('.theme-btn');
-if (themeBtn) themeBtn.textContent = currentTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+    
     // پاک کردنەوەی outputەکانی کۆن کاتی چوونەژووردەوەی نوێ
     const outputIds = ["dailyOutput", "weeklyOutput", "monthlyOutput", "searchOutput"];
     outputIds.forEach(id => {

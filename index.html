@@ -89,11 +89,9 @@
 
     <!-- MAIN -->
 <div class="topbar">
-  <span id="currentUserName" class="topbar-user"></span>
+  <button class="burger" onclick="openSidebar()">...</button>
   <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
-  <button class="burger" onclick="openSidebar()">
-    <span></span><span></span><span></span>
-  </button>
+  <span id="currentUserName" class="topbar-user"></span>
 </div>
 
       <div class="content-area">
@@ -581,45 +579,6 @@
     .role-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:bold;}
     .role-admin{background:#fee2e2;color:#e74c3c;}
     .role-staff{background:#dbeafe;color:#3498db;}
-	
-	.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.page-ttl {
-  flex: 1;
-  text-align: center;
-  margin: 0;
-}
-
-.burger {
-  order: 3;
-  display: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-  width: 36px;
-  height: 36px;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0;
-}
-
-@media (max-width: 768px) {
-  .burger {
-    display: flex;
-  }
-  .topbar-user {
-    display: none;
-  }
-}
-	
-	
   </style>
 
   <script>
