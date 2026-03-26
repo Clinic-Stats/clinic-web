@@ -14,9 +14,18 @@ const firebaseConfig = {
   appId: "1:122761541077:web:967c2618895fe57d51b95c"
 };
 
+// ============================================
+// PRIMARY APP (ئەدمین لێرە چوونەژوورەوە دەکات)
+// ============================================
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+// ============================================
+// SECONDARY APP (بۆ دروستکردنی یوزەری نوێ بێ گۆڕینی session ی ئەدمین)
+// ============================================
+const secondaryApp = initializeApp(firebaseConfig, "secondary");
+const secondaryAuth = getAuth(secondaryApp);
 
 // Enable offline persistence
 enableIndexedDbPersistence(db).catch(err => {
@@ -69,12 +78,12 @@ window.closeModal = function() {
 function applyTheme(theme) {
   if (theme === 'dark') {
     document.body.classList.add('dark-mode');
-    const themeBtn = document.querySelector('.theme-btn');
-    if (themeBtn) themeBtn.textContent = '☀️ Light Mode';
+    const toggle = document.getElementById('themeToggle');
+    if (toggle) toggle.innerHTML = '☀️';
   } else {
     document.body.classList.remove('dark-mode');
-    const themeBtn = document.querySelector('.theme-btn');
-    if (themeBtn) themeBtn.textContent = '🌙 Dark Mode';
+    const toggle = document.getElementById('themeToggle');
+    if (toggle) toggle.innerHTML = '🌙';
   }
   localStorage.setItem('theme', theme);
   currentTheme = theme;
@@ -157,7 +166,6 @@ onAuthStateChanged(auth, async (user) => {
     checkTodaySaved();
     applyTheme(currentTheme);
     
-    // پاک کردنەوەی outputەکانی کۆن کاتی چوونەژووردەوەی نوێ
     const outputIds = ["dailyOutput", "weeklyOutput", "monthlyOutput", "searchOutput"];
     outputIds.forEach(id => {
       const el = document.getElementById(id);
@@ -198,10 +206,10 @@ async function loadStaffList() {
   try {
     const usersSnap = await getDocs(collection(db, "users"));
     allStaffList = [];
-    usersSnap.forEach(doc => {
-      const userData = doc.data();
+    usersSnap.forEach(d => {
+      const userData = d.data();
       if (userData.role === "staff") {
-        const staffName = doc.id.split('@')[0];
+        const staffName = d.id.split('@')[0];
         allStaffList.push(staffName);
       }
     });
@@ -270,11 +278,10 @@ function setTodayDate() {
   document.getElementById("entryDate").value = todayStr;
   document.getElementById("dailyFilterDate").value = todayStr;
 }
+
 // ============================================
 // USER MANAGEMENT PANEL (FOR ADMIN ONLY)
 // ============================================
-
-// Load all users from Firestore
 async function loadAllUsers() {
   if (!isCurrentUserAdmin) return [];
   
@@ -282,11 +289,11 @@ async function loadAllUsers() {
     const usersSnap = await getDocs(collection(db, "users"));
     const usersList = [];
     
-    usersSnap.forEach(doc => {
+    usersSnap.forEach(d => {
       usersList.push({
-        email: doc.id,
-        role: doc.data().role || "staff",
-        createdAt: doc.data().createdAt
+        email: d.id,
+        role: d.data().role || "staff",
+        createdAt: d.data().createdAt
       });
     });
     
@@ -297,7 +304,6 @@ async function loadAllUsers() {
   }
 }
 
-// Show User Management Modal
 window.showUserManagement = async function() {
   if (!isCurrentUserAdmin) {
     alert("تەنها بەڕێوەبەر دەتوانێت ئەم بەشە ببینێت!");
@@ -315,7 +321,6 @@ window.showUserManagement = async function() {
           ➕ زیادکردنی بەکارهێنەری نوێ
         </button>
       </div>
-      
       <div style="display: flex; flex-direction: column; gap: 12px;">
   `;
   
@@ -327,17 +332,12 @@ window.showUserManagement = async function() {
       <div class="user-card" style="border: 1px solid #ddd; border-radius: 12px; padding: 15px; background: ${isCurrentUserAdminAccount ? '#fef9e6' : '#fff'};">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div style="flex: 2;">
-            <div style="font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-              <span>👤</span>
-              <span>${user.email}</span>
-            </div>
-            <div style="margin-top: 8px; display: flex; gap: 15px; flex-wrap: wrap;">
-              <span class="role-badge ${user.role === 'admin' ? 'role-admin' : 'role-staff'}">
+            <div style="font-weight: bold; font-size: 16px;">👤 ${user.email}</div>
+            <div style="margin-top: 8px;">
+              <span style="padding: 3px 8px; border-radius: 6px; background: ${user.role === 'admin' ? '#f39c12' : '#3498db'}; color: white; font-size: 12px;">
                 ${user.role === 'admin' ? '👑 ئەدمین' : '👤 ستاف'}
               </span>
-              <span style="color: #888; font-size: 12px;">
-                📅 ${createdAtStr}
-              </span>
+              <span style="color: #888; font-size: 12px; margin-right: 10px;">📅 ${createdAtStr}</span>
             </div>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -361,47 +361,40 @@ window.showUserManagement = async function() {
     `;
   }
   
-  usersHtml += `
-      </div>
-    </div>
-  `;
-  
+  usersHtml += `</div></div>`;
   window.showModal('👥 بەڕێوەبردنی بەکارهێنەران', usersHtml);
 };
 
-// Show Add User Form
 window.showAddUserForm = function() {
   window.closeModal();
   
   const formHtml = `
     <div style="direction: rtl;">
       <h3 style="margin-bottom: 15px;">➕ زیادکردنی بەکارهێنەری نوێ</h3>
-      
-      <label>ناوی بەکارهێنەر (ئیمەیڵ):</label>
-      <input type="text" id="newUserEmail" placeholder="مثال: naza" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
-      <p style="font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 10px;">🔹 @clinic.com بە شێوەی ئۆتۆماتیکی زیاد دەکرێت</p>
-      
+      <label>ناوی بەکارهێنەر:</label>
+      <input type="text" id="newUserEmail" placeholder="نموونە: naza" style="width: 100%; padding: 10px; margin-bottom: 5px; border-radius: 8px; border: 1px solid #ccc;">
+      <p style="font-size: 12px; color: #666; margin-bottom: 10px;">🔹 @clinic.com بە شێوەی ئۆتۆماتیکی زیاد دەکرێت</p>
       <label>پاسۆرد:</label>
-      <input type="password" id="newUserPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px;">
-      
+      <input type="password" id="newUserPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ccc;">
       <label>ڕۆڵ:</label>
-      <select id="newUserRole" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+      <select id="newUserRole" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ccc;">
         <option value="staff">👤 ستاف (ئاسایی)</option>
         <option value="admin">👑 ئەدمین (بەڕێوەبەر)</option>
       </select>
-      
       <div style="display: flex; gap: 10px;">
         <button onclick="createNewUser()" style="background: #27ae60; flex: 1; margin:0;">✔️ دروستکردن</button>
         <button onclick="window.closeModal()" style="background: #95a5a6; flex: 1; margin:0;">❌ پاشگەزبوونەوە</button>
       </div>
-      <p id="addUserMsg" style="margin-top: 10px; font-size: 12px;"></p>
+      <p id="addUserMsg" style="margin-top: 10px; font-size: 13px;"></p>
     </div>
   `;
   
   window.showModal('➕ زیادکردنی بەکارهێنەر', formHtml);
 };
 
-// Create New User
+// ============================================
+// CREATE NEW USER — بە secondary app بۆ ئەوەی session ی ئەدمین نەگۆڕێت
+// ============================================
 window.createNewUser = async function() {
   let email = document.getElementById('newUserEmail')?.value.trim();
   const password = document.getElementById('newUserPassword')?.value;
@@ -429,8 +422,14 @@ window.createNewUser = async function() {
   showLoading();
   
   try {
-    await createUserWithEmailAndPassword(auth, email, password);
+    // بەکارهێنانی secondaryAuth بۆ دروستکردنی ئەکاونتی نوێ
+    // ئەمە session ی ئەدمینەکە نادەگۆڕێت
+    const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     
+    // دوای دروستکردن، sign out بکە لە secondary app
+    await secondaryAuth.signOut();
+    
+    // زانیاری یوزەر بنووسە لە Firestore
     await setDoc(doc(db, "users", email), {
       role: role,
       createdAt: Timestamp.now()
@@ -445,7 +444,11 @@ window.createNewUser = async function() {
     }, 1500);
   } catch (error) {
     console.error('Error creating user:', error);
-    msgEl.textContent = '❌ هەڵە: ' + error.message;
+    if (error.code === 'auth/email-already-in-use') {
+      msgEl.textContent = '❌ ئەم ئیمەیڵە پێشتر تۆمار کراوە';
+    } else {
+      msgEl.textContent = '❌ هەڵە: ' + error.message;
+    }
     msgEl.style.color = 'red';
   } finally {
     hideLoading();
@@ -461,10 +464,7 @@ window.editUserRole = async function(email, currentRole) {
   
   showLoading();
   try {
-    await setDoc(doc(db, "users", email), {
-      role: newRole
-    }, { merge: true });
-    
+    await setDoc(doc(db, "users", email), { role: newRole }, { merge: true });
     alert(`✅ ڕۆڵی ${email} گۆڕدرا بۆ ${roleName}`);
     window.showUserManagement();
   } catch (error) {
@@ -481,14 +481,13 @@ window.showChangePasswordForm = function(email) {
   const formHtml = `
     <div style="direction: rtl;">
       <h3 style="margin-bottom: 15px;">🔐 گۆڕینی پاسۆرد</h3>
-      <p style="margin-bottom: 15px; color: #3498db;">بەکارهێنەر: <strong>${email}</strong></p>
-      <p style="margin-bottom: 15px; font-size: 12px; color: #e67e22;">📧 لینکی گۆڕینی پاسۆرد بۆ ئیمەیڵی بەکارهێنەر دەنێردرێت</p>
-      
+      <p style="margin-bottom: 10px; color: #3498db;">بەکارهێنەر: <strong>${email}</strong></p>
+      <p style="margin-bottom: 15px; font-size: 13px; color: #e67e22;">📧 لینکی گۆڕینی پاسۆرد بۆ ئیمەیڵی بەکارهێنەر دەنێردرێت</p>
       <div style="display: flex; gap: 10px;">
         <button onclick="sendPasswordResetToUser('${email}')" style="background: #27ae60; flex: 1; margin:0;">📧 ناردنی لینک</button>
         <button onclick="window.closeModal()" style="background: #95a5a6; flex: 1; margin:0;">❌ داخستن</button>
       </div>
-      <p id="changePwdMsg" style="margin-top: 10px; font-size: 12px;"></p>
+      <p id="changePwdMsg" style="margin-top: 10px; font-size: 13px;"></p>
     </div>
   `;
   
@@ -507,7 +506,6 @@ window.sendPasswordResetToUser = async function(email) {
     await sendPasswordResetEmail(auth, email);
     msgEl.textContent = '✅ لینکی گۆڕینی پاسۆرد نێردرا بۆ ئیمەیڵی بەکارهێنەر!';
     msgEl.style.color = 'green';
-    
     setTimeout(() => window.closeModal(), 2000);
   } catch (error) {
     console.error('Error:', error);
@@ -531,32 +529,51 @@ window.showChangeEmailForm = function(oldEmail) {
       <h3 style="margin-bottom: 15px;">✉️ گۆڕینی ئیمەیڵ</h3>
       <p style="margin-bottom: 15px;">ئیمەیڵی ئێستا: <strong>${oldEmail}</strong></p>
       
-      <label>ئیمەیڵی نوێ:</label>
-      <input type="email" id="newUserEmailAddress" placeholder="example@clinic.com" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+      <label>ناوی نوێ (بێ @clinic.com):</label>
+      <input type="text" id="newUserEmailAddress" placeholder="نموونە: naza2" style="width: 100%; padding: 10px; margin-bottom: 5px; border-radius: 8px; border: 1px solid #ccc;">
+      <p style="font-size: 12px; color: #666; margin-bottom: 10px;">🔹 @clinic.com بە شێوەی ئۆتۆماتیکی زیاد دەکرێت</p>
       
       <label>پاسۆردی نوێ (بۆ ئەکاونتە نوێیەکە):</label>
-      <input type="password" id="newUserEmailPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
+      <input type="password" id="newUserEmailPassword" placeholder="لانی کەم ٦ پیت" style="width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ccc;">
       
       <div style="display: flex; gap: 10px;">
         <button onclick="updateUserEmail('${oldEmail}')" style="background: #27ae60; flex: 1; margin:0;">✔️ گۆڕین</button>
         <button onclick="window.closeModal()" style="background: #95a5a6; flex: 1; margin:0;">❌ داخستن</button>
       </div>
-      <p id="changeEmailMsg" style="margin-top: 10px; font-size: 12px;"></p>
-      <p style="margin-top: 10px; font-size: 11px; color: #e74c3c;">⚠️ تێبینی: ئەکاونتە کۆنەکە دەسڕێتەوە و ئەکاونتێکی نوێ دروست دەکرێت</p>
+      <p id="changeEmailMsg" style="margin-top: 10px; font-size: 13px;"></p>
+      <p style="margin-top: 8px; font-size: 11px; color: #e74c3c;">⚠️ تێبینی: ئەکاونتە کۆنەکە دەسڕێتەوە و ئەکاونتێکی نوێ دروست دەکرێت</p>
     </div>
   `;
   
   window.showModal('✉️ گۆڕینی ئیمەیڵ', formHtml);
 };
 
-// Update User Email
+// ============================================
+// UPDATE USER EMAIL — چارەسەرکراو: secondary app بەکارهاتووە
+// کێشەی کۆن: createUserWithEmailAndPassword لە primary auth دەکرا
+//              و ئەدمینەکە sign out دەبوو
+// چارەسەر: secondaryAuth بەکارهاتووە بۆ دروستکردنی ئەکاونتی نوێ
+//           بێ گۆڕینی session ی ئەدمین
+// ============================================
 window.updateUserEmail = async function(oldEmail) {
-  const newEmail = document.getElementById('newUserEmailAddress')?.value.trim();
+  let newEmailInput = document.getElementById('newUserEmailAddress')?.value.trim();
   const newPassword = document.getElementById('newUserEmailPassword')?.value;
   const msgEl = document.getElementById('changeEmailMsg');
   
-  if (!newEmail || !newEmail.includes('@')) {
-    msgEl.textContent = '⚠️ تکایە ئیمەیڵێکی دروست بنووسە';
+  if (!newEmailInput) {
+    msgEl.textContent = '⚠️ تکایە ناوی نوێ بنووسە';
+    msgEl.style.color = 'red';
+    return;
+  }
+  
+  // ئۆتۆماتیکی @clinic.com زیاد بکە ئەگەر نەبوو
+  let newEmail = newEmailInput;
+  if (!newEmail.includes('@')) {
+    newEmail = newEmail + '@clinic.com';
+  }
+  
+  if (newEmail === oldEmail) {
+    msgEl.textContent = '⚠️ ئیمەیڵی نوێ وەک ئیمەیڵی کۆن نابێت';
     msgEl.style.color = 'red';
     return;
   }
@@ -572,16 +589,24 @@ window.updateUserEmail = async function(oldEmail) {
   showLoading();
   
   try {
+    // زانیاری ئەکاونتە کۆنەکە بخوێنەوە
     const userDoc = await getDoc(doc(db, "users", oldEmail));
     const userRole = userDoc.exists() ? userDoc.data().role : 'staff';
     
-    await createUserWithEmailAndPassword(auth, newEmail, newPassword);
+    // === چارەسەر: بەکارهێنانی secondaryAuth ===
+    // ئەمە ئەکاونتی نوێ دروست دەکات بێ گۆڕینی session ی ئەدمین
+    await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
     
+    // دوای دروستکردن، sign out بکە لە secondary app
+    await secondaryAuth.signOut();
+    
+    // زانیاری نوێ بنووسە لە Firestore
     await setDoc(doc(db, "users", newEmail), {
       role: userRole,
       createdAt: Timestamp.now()
     });
     
+    // ئەکاونتە کۆنەکە لە Firestore بسڕەوە
     await deleteDoc(doc(db, "users", oldEmail));
     
     msgEl.textContent = '✅ ئیمەیڵ گۆڕدرا! بەکارهێنەر دەبێت بە ئیمەیڵی نوێ بچێتە ژوورەوە';
@@ -593,14 +618,23 @@ window.updateUserEmail = async function(oldEmail) {
     }, 2000);
   } catch (error) {
     console.error('Error:', error);
-    msgEl.textContent = '❌ هەڵە: ' + error.message;
+    // sign out بکە لە secondary app ئەگەر هەڵە ڕووی دا
+    try { await secondaryAuth.signOut(); } catch(e) {}
+    
+    if (error.code === 'auth/email-already-in-use') {
+      msgEl.textContent = '❌ ئەم ئیمەیڵە پێشتر تۆمار کراوە';
+    } else if (error.code === 'auth/invalid-email') {
+      msgEl.textContent = '❌ ئیمەیڵەکە هەڵەیە';
+    } else {
+      msgEl.textContent = '❌ هەڵە: ' + error.message;
+    }
     msgEl.style.color = 'red';
   } finally {
     hideLoading();
   }
 };
 
-// Delete User Account
+// Delete User Account (Firestore only)
 window.deleteUserAccount = async function(email) {
   if (!confirm(`⚠️ دڵنیایت لە سڕینەوەی بەکارهێنەر "${email}"؟\nئەم کردارە گەڕانەوەی نییە!`)) return;
   
@@ -631,6 +665,9 @@ window.toggleAdminForm = function() {
   }
 };
 
+// ============================================
+// CREATE STAFF — بە secondary app بۆ ئەوەی session ی ئەدمین نەگۆڕێت
+// ============================================
 window.createStaff = async function () {
   let email = document.getElementById("newStaffEmail").value.trim().toLowerCase();
   const pass = document.getElementById("newStaffPassword").value;
@@ -651,7 +688,10 @@ window.createStaff = async function () {
   showLoading();
 
   try {
-    await createUserWithEmailAndPassword(auth, email, pass);
+    // بەکارهێنانی secondaryAuth بۆ ئەوەی ئەدمین sign out نەبێت
+    await createUserWithEmailAndPassword(secondaryAuth, email, pass);
+    await secondaryAuth.signOut();
+    
     await setDoc(doc(db, "users", email), {
       role: "staff",
       createdAt: Timestamp.now()
@@ -666,7 +706,12 @@ window.createStaff = async function () {
     setTimeout(() => { msg.textContent = ""; }, 3000);
 
   } catch (e) {
-    msg.textContent = "❌ هەڵە: " + e.message;
+    try { await secondaryAuth.signOut(); } catch(ex) {}
+    if (e.code === 'auth/email-already-in-use') {
+      msg.textContent = "❌ ئەم ئیمەیڵە پێشتر تۆمار کراوە";
+    } else {
+      msg.textContent = "❌ هەڵە: " + e.message;
+    }
     msg.style.color = "red";
   } finally {
     hideLoading();
@@ -730,7 +775,7 @@ window.changeCount = async function(fieldId, amount) {
   let val = parseInt(input.value);
   if(isNaN(val)) val = 0;
   let newVal = val + amount;
-  if(newVal < 0) newVal = 0; 
+  if(newVal < 0) newVal = 0;
   input.value = newVal;
 };
 
@@ -738,22 +783,24 @@ window.changeCount = async function(fieldId, amount) {
 // SAVE ENTRY
 // ============================================
 window.saveEntry = async function () {
-  if (!currentUser) return;
-  
   const countAdult = parseInt(document.getElementById("patientCountAdult").value) || 0;
   const countChild = parseInt(document.getElementById("patientCountChild").value) || 0;
   const dateVal = document.getElementById("entryDate").value;
   const msg = document.getElementById("statusMsg");
 
   if (!dateVal) {
-    msg.textContent = "⚠️ تکایە ڕێکەوت دیاری بکە"; 
+    msg.textContent = "⚠️ تکایە ڕێکەوت هەڵبژێرە!";
+    msg.style.color = "red";
+    setTimeout(() => { msg.textContent = ""; }, 3000);
     return;
   }
 
+  const parts = dateVal.split('-');
+  const chosen = new Date(parts[0], parts[1] - 1, parts[2]);
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const selectedDate = new Date(dateVal);
-  if (selectedDate > today) {
+  today.setHours(0,0,0,0);
+
+  if (chosen > today) {
     msg.textContent = "⚠️ ناتوانیت بۆ ڕێکەوتی داهاتوو تۆمار بکەیت!";
     msg.style.color = "red";
     setTimeout(() => { msg.textContent = ""; }, 3000);
@@ -767,9 +814,7 @@ window.saveEntry = async function () {
     return;
   }
   
-  const parts = dateVal.split('-');
   const dateObj = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
-  
   let staffSimpleName = currentUser.email.toLowerCase().split('@')[0];
 
   const dayStart = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0);
@@ -784,27 +829,30 @@ window.saveEntry = async function () {
       where("date", ">=", Timestamp.fromDate(dayStart)),
       where("date", "<=", Timestamp.fromDate(dayEnd))
     ));
+
     if (!existing.empty) {
-      const go = confirm(`⚠️ ئەم ڕۆژە (${dateVal}) پێشتر تۆمار کراوە!\nئایا دەتەوێت دووبارە تۆمار بکەی؟`);
-      if (!go) {
-        hideLoading();
-        return;
-      }
+      msg.textContent = "⛔ ئەم ڕۆژە پێشتر تۆمار کراوە!";
+      msg.style.color = "red";
+      setTimeout(() => { msg.textContent = ""; }, 3000);
+      hideLoading();
+      return;
     }
 
+    const weekNo = getWeekNumber(dateObj);
     await addDoc(collection(db, "entries"), {
-      staff      : staffSimpleName,
-      countAdult : countAdult,
-      countChild : countChild,
-      count      : countAdult + countChild,
-      date       : Timestamp.fromDate(dateObj),
-      weekNumber : getWeekNumber(dateObj),
+      staff: staffSimpleName,
+      countAdult: countAdult,
+      countChild: countChild,
+      date: Timestamp.fromDate(dateObj),
+      weekNumber: weekNo,
+      month: dateObj.getMonth(),
+      year: dateObj.getFullYear()
     });
-    
-    msg.textContent = "✅ بە سەرکەوتوویی پاشکەوت کرا!";
+
+    msg.textContent = "✅ تۆمار کرا!";
     msg.style.color = "green";
-    document.getElementById("patientCountAdult").value = "0";
-    document.getElementById("patientCountChild").value = "0";
+    document.getElementById("patientCountAdult").value = 0;
+    document.getElementById("patientCountChild").value = 0;
     todayAlreadySaved = true;
     setTimeout(() => { msg.textContent = ""; }, 3000);
   } catch (e) {
@@ -834,33 +882,26 @@ async function fetchDailyForCurrentUser() {
 }
 
 window.loadDaily = async function () {
-  const output = document.getElementById("dailyOutput");
-  output.innerHTML = "";
-
   showLoading();
   const snap = await fetchDailyForCurrentUser();
-  if (!snap) {
-    hideLoading();
-    return;
-  }
+  const output = document.getElementById("dailyOutput");
 
-  if (snap.empty) {
-    output.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە بۆ ئەم ڕۆژە</p>";
+  if (!snap || snap.empty) {
+    output.innerHTML = "هیچ تۆمارێک نییە بۆ ئەم ڕۆژە";
     hideLoading();
     return;
   }
 
   const staffName = currentUser.email.toLowerCase().split('@')[0];
 
-  let html = `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
-    <thead><tr style="background: #3498db; color: white;">
-      <th style="padding: 10px;">کارمەند</th>
-      <th style="padding: 10px;">🧑 گەورە</th>
-      <th style="padding: 10px;">🧒 منال</th>
-      <th style="padding: 10px;">کۆی گشتی</th>
-      <th style="padding: 10px;">ڕێکەوت</th>
-      <th style="padding: 10px;">کردارەکان</th>
-      </tr></thead><tbody>`;
+  let html = `<table><thead><tr>
+    <th>کارمەند</th>
+    <th>🧑 گەورە</th>
+    <th>🧒 منال</th>
+    <th>کۆی گشتی</th>
+    <th>ڕێکەوت</th>
+    <th>کردارەکان</th>
+  </tr></thead><tbody>`;
   let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
@@ -880,32 +921,32 @@ window.loadDaily = async function () {
     let actionButtons = "";
     if (isCurrentUserAdmin || data.staff === staffName) {
       actionButtons = `
-        <button onclick="editEntry('${docId}', ${adult}, ${child})" style="font-size:12px; padding:4px 8px;">✏️</button>
-        <button onclick="deleteEntry('${docId}')" style="font-size:12px; padding:4px 8px; background:#e74c3c;">🗑️</button>
+        <button onclick="editEntry('${docId}', ${adult}, ${child})" style="width:auto;padding:4px 8px;margin:2px;font-size:11px;">✏️</button>
+        <button onclick="deleteEntry('${docId}')" style="width:auto;padding:4px 8px;margin:2px;font-size:11px;background:#e74c3c;">🗑️</button>
       `;
     }
 
-    html += `<tr style="border-bottom: 1px solid #eee;">
-      <td style="padding: 8px; text-align: center;">${data.staff}</td>
-      <td style="padding: 8px; text-align: center;">${adult}</td>
-      <td style="padding: 8px; text-align: center;">${child}</td>
-      <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
-      <td style="padding: 8px; text-align: center; direction: ltr;">${data.date.toDate().toLocaleDateString("en-GB")}</td>
-      <td style="padding: 8px; text-align: center;">${actionButtons}</td>
-      </tr>`;
+    html += `<tr>
+      <td>${data.staff}</td>
+      <td>${adult}</td>
+      <td>${child}</td>
+      <td>${total}</td>
+      <td>${data.date.toDate().toLocaleDateString("en-GB")}</td>
+      <td>${actionButtons}</td>
+    </tr>`;
   });
 
   if (totalAdult > 0 || totalChild > 0) {
-    html += `<tr style="background: #eaf4fb; font-weight: bold;">
-      <td style="padding: 8px;">کۆی گشتی</td>
-      <td style="padding: 8px; text-align: center;">${totalAdult}</td>
-      <td style="padding: 8px; text-align: center;">${totalChild}</td>
-      <td style="padding: 8px; text-align: center;"><strong>${totalAll}</strong></td>
-      <td style="padding: 8px; text-align: center;">-</td>
-      <td style="padding: 8px; text-align: center;">-</td>
-      </tr>`;
+    html += `<tr class="total-row">
+      <td>کۆی گشتی</td>
+      <td>${totalAdult}</td>
+      <td>${totalChild}</td>
+      <td>${totalAll}</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>`;
   }
-  html += `</tbody></table></div>`;
+  html += `</tbody></table>`;
   output.innerHTML = html;
   hideLoading();
 };
@@ -919,29 +960,16 @@ window.editEntry = async function(docId, currentAdult, currentChild) {
   const adultVal = parseInt(newAdult);
   const childVal = parseInt(newChild);
   if (isNaN(adultVal) || isNaN(childVal) || adultVal < 0 || childVal < 0) {
-    alert("تکایە ژمارەیەکی دروست بنووسە");
+    alert("⚠️ ژمارە هەڵەیە!");
     return;
   }
 
   showLoading();
   try {
-    await setDoc(doc(db, "entries", docId), { 
-      countAdult: adultVal, 
-      countChild: childVal,
-      count: adultVal + childVal
-    }, { merge: true });
-    alert("✅ بە سەرکەوتوویی نوێکرایەوە!");
-    document.getElementById("dailyOutput").innerHTML = "";
-    document.getElementById("weeklyOutput").innerHTML = "";
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-    loadDaily(); 
-    loadWeekly();
-    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") {
-      document.getElementById("monthlyOutput").innerHTML = "";
-      loadMonthly();
-    }
-    if (isCurrentUserAdmin && document.getElementById("staffSearchSelect").value) searchByStaff();
-  } catch (e) {
+    await setDoc(doc(db, "entries", docId), { countAdult: adultVal, countChild: childVal }, { merge: true });
+    alert("✅ تۆمارەکە نوێ کرایەوە!");
+    window.loadDaily();
+  } catch(e) {
     alert("❌ هەڵە: " + e.message);
   } finally {
     hideLoading();
@@ -949,23 +977,13 @@ window.editEntry = async function(docId, currentAdult, currentChild) {
 };
 
 window.deleteEntry = async function(docId) {
-  if (!confirm("دڵنیایت لە سڕینەوەی ئەم تۆمارە؟")) return;
-
+  if (!confirm("⚠️ دڵنیایت لە سڕینەوەی ئەم تۆمارە؟")) return;
   showLoading();
   try {
     await deleteDoc(doc(db, "entries", docId));
-    alert("✅ بە سەرکەوتوویی سڕایەوە!");
-    document.getElementById("dailyOutput").innerHTML = "";
-    document.getElementById("weeklyOutput").innerHTML = "";
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-    loadDaily();
-    loadWeekly();
-    if (document.getElementById("monthlyOutput").innerHTML.trim() !== "") {
-      document.getElementById("monthlyOutput").innerHTML = "";
-      loadMonthly();
-    }
-    if (isCurrentUserAdmin && document.getElementById("staffSearchSelect").value) searchByStaff();
-  } catch (e) {
+    alert("✅ تۆمارەکە سڕایەوە!");
+    window.loadDaily();
+  } catch(e) {
     alert("❌ هەڵە: " + e.message);
   } finally {
     hideLoading();
@@ -976,16 +994,16 @@ window.deleteEntry = async function(docId) {
 // SEARCH BY STAFF
 // ============================================
 window.searchByStaff = async function() {
-  const selectedStaff = document.getElementById("staffSearchSelect").value;
   const searchOutput = document.getElementById("searchOutput");
+  const selectedStaff = document.getElementById("staffSearchSelect")?.value;
   
   if (!selectedStaff) {
-    searchOutput.innerHTML = "<p style='text-align:center; color:#888;'>تکایە کارمەندێک هەڵبژێرە</p>";
+    searchOutput.innerHTML = "⚠️ تکایە کارمەندێک هەڵبژێرە";
     return;
   }
 
   showLoading();
-  searchOutput.innerHTML = "<p style='text-align:center;'>⏳ چاوەڕێ بکە... داتا دەهێنرێت</p>";
+  searchOutput.innerHTML = "⏳ چاوەڕێ بکە... داتا دەهێنرێت";
   
   try {
     const entriesQuery = query(
@@ -996,24 +1014,22 @@ window.searchByStaff = async function() {
     const snap = await getDocs(entriesQuery);
     
     if (snap.empty) {
-      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێک نییە بۆ کارمەند "${selectedStaff}"</p>`;
+      searchOutput.innerHTML = `📭 هیچ تۆمارێک نییە بۆ کارمەند "${selectedStaff}"`;
       hideLoading();
       return;
     }
     
     const entries = [];
-    snap.forEach(doc => {
-      const data = doc.data();
+    snap.forEach(d => {
+      const data = d.data();
       const adult = data.countAdult ?? data.count ?? 0;
       const child = data.countChild ?? 0;
       const total = adult + child;
       
       if (total > 0) {
         entries.push({
-          id: doc.id,
-          adult: adult,
-          child: child,
-          total: total,
+          id: d.id,
+          adult, child, total,
           date: data.date.toDate(),
           dateStr: data.date.toDate().toLocaleDateString("en-GB")
         });
@@ -1023,20 +1039,19 @@ window.searchByStaff = async function() {
     entries.sort((a, b) => b.date - a.date);
     
     if (entries.length === 0) {
-      searchOutput.innerHTML = `<p style='text-align:center;'>📭 هیچ تۆمارێکی ناسفر نییە بۆ کارمەند "${selectedStaff}"</p>`;
+      searchOutput.innerHTML = `📭 هیچ تۆمارێکی ناسفر نییە بۆ کارمەند "${selectedStaff}"`;
       hideLoading();
       return;
     }
     
-    let html = `<h3 style="margin-bottom: 15px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
-    html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
-      <thead><tr style="background: #3498db; color: white;">
-        <th style="padding: 10px;">#</th>
-        <th style="padding: 10px;">🧑 گەورە</th>
-        <th style="padding: 10px;">🧒 منال</th>
-        <th style="padding: 10px;">کۆی گشتی</th>
-        <th style="padding: 10px;">📅 ڕێکەوت</th>
-      </tr></thead><tbody>`;
+    let html = `<h3 style="margin-bottom:10px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
+    html += `<table><thead><tr>
+      <th>#</th>
+      <th>🧑 گەورە</th>
+      <th>🧒 منال</th>
+      <th>کۆی گشتی</th>
+      <th>📅 ڕێکەوت</th>
+    </tr></thead><tbody>`;
     
     let totalAdult = 0, totalChild = 0;
     let index = 1;
@@ -1044,122 +1059,95 @@ window.searchByStaff = async function() {
     for (const entry of entries) {
       totalAdult += entry.adult;
       totalChild += entry.child;
-      
-      html += `<tr style="border-bottom: 1px solid #eee;">
-        <td style="padding: 8px; text-align: center;">${index++}</td>
-        <td style="padding: 8px; text-align: center;">${entry.adult}</td>
-        <td style="padding: 8px; text-align: center;">${entry.child}</td>
-        <td style="padding: 8px; text-align: center;"><strong>${entry.total}</strong></td>
-        <td style="padding: 8px; text-align: center; direction: ltr;">${entry.dateStr}</td>
+      html += `<tr>
+        <td>${index++}</td>
+        <td>${entry.adult}</td>
+        <td>${entry.child}</td>
+        <td>${entry.total}</td>
+        <td>${entry.dateStr}</td>
       </tr>`;
     }
     
-    html += `<tr style="background: #eaf4fb; font-weight: bold;">
-      <td style="padding: 8px;"><strong>کۆی گشتی</strong></td>
-      <td style="padding: 8px; text-align: center;"><strong>${totalAdult}</strong></td>
-      <td style="padding: 8px; text-align: center;"><strong>${totalChild}</strong></td>
-      <td style="padding: 8px; text-align: center;"><strong>${totalAdult + totalChild}</strong></td>
-      <td style="padding: 8px; text-align: center;">-</td>
-      </tr>`;
-    
-    html += `</tbody></table></div>`;
+    html += `<tr class="total-row">
+      <td>کۆی گشتی</td>
+      <td>${totalAdult}</td>
+      <td>${totalChild}</td>
+      <td>${totalAdult + totalChild}</td>
+      <td>-</td>
+    </tr>`;
+    html += `</tbody></table>`;
     searchOutput.innerHTML = html;
     
   } catch (e) {
-    console.error("Search error details:", e);
-    searchOutput.innerHTML = `<p style='color:red; text-align:center;'>❌ هەڵە لە گەڕاندا: ${e.message}</p>`;
+    console.error("Search error:", e);
+    searchOutput.innerHTML = `❌ هەڵە لە گەڕاندا: ${e.message}`;
   } finally {
     hideLoading();
   }
 };
 
 // ============================================
-// WEEKLY STATS FUNCTIONS
+// WEEKLY STATS
 // ============================================
 function getDateRangeOfWeek(weekNo, year) {
-    let d = new Date(year, 0, 1);
-    let days = (weekNo - 1) * 7;
-    let dayOfWeek = d.getDay(); 
-    let offset = -dayOfWeek;
-    
-    let firstDay = new Date(year, 0, d.getDate() + days + offset);
-    let lastDay = new Date(firstDay);
-    lastDay.setDate(firstDay.getDate() + 6);
-    
-    const formatDate = (date) => {
-        return date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
-    };
-    
-    return `[ لە ${formatDate(firstDay)} بۆ ${formatDate(lastDay)} ]`;
+  let d = new Date(year, 0, 1);
+  let days = (weekNo - 1) * 7;
+  let dayOfWeek = d.getDay(); 
+  let offset = -dayOfWeek;
+  let firstDay = new Date(year, 0, d.getDate() + days + offset);
+  let lastDay = new Date(firstDay);
+  lastDay.setDate(firstDay.getDate() + 6);
+  const formatDate = (date) => date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
+  return `[ لە ${formatDate(firstDay)} بۆ ${formatDate(lastDay)} ]`;
 }
 
 function populateWeekDropdown() {
-    const select = document.getElementById("weekSelector");
-    if (!select) return;
-    select.innerHTML = "";
-    
-    const currentWk = getWeekNumber(new Date());
-    
-    for (let i = 1; i <= 52; i++) {
-        let option = document.createElement("option");
-        option.value = i;
-        
-        let labelText = `هەفتەی ${i}`;
-        if (i === currentWk) labelText = `ئەم هەفتەیە (هەفتەی ${i})`;
-        else if (i === currentWk - 1) labelText = `هەفتەی پێشوو (هەفتەی ${i})`;
-        
-        option.textContent = labelText;
-        if (i === currentWk) option.selected = true;
-        
-        select.appendChild(option);
-    }
-    
-    updateDateRangeLabel();
-}
-
-function updateDateRangeLabel() {
-    const label = document.getElementById("weekDateRangeLabel");
-    if(!label) return;
-    let dateRange = getDateRangeOfWeek(selectedWeekNumber, currentYear);
-    label.textContent = dateRange;
+  const select = document.getElementById("weekSelector");
+  if (!select) return;
+  select.innerHTML = "";
+  const currentWk = getWeekNumber(new Date());
+  for (let i = 1; i <= 53; i++) {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = `هەفتەی ${i}`;
+    if (i === currentWk) option.selected = true;
+    select.appendChild(option);
+  }
+  selectedWeekNumber = currentWk;
+  const rangeLabel = document.getElementById("weekDateRangeLabel");
+  if (rangeLabel) rangeLabel.textContent = getDateRangeOfWeek(currentWk, currentYear);
 }
 
 window.selectWeekFromDropdown = function() {
-    const select = document.getElementById("weekSelector");
-    selectedWeekNumber = parseInt(select.value);
-    updateDateRangeLabel();
-    const weeklyOutput = document.getElementById("weeklyOutput");
-    if (weeklyOutput && weeklyOutput.innerHTML.trim() !== "") {
-      window.loadWeekly();
-    }
+  selectedWeekNumber = parseInt(document.getElementById("weekSelector").value);
+  const rangeLabel = document.getElementById("weekDateRangeLabel");
+  if (rangeLabel) rangeLabel.textContent = getDateRangeOfWeek(selectedWeekNumber, currentYear);
 };
 
 async function fetchWeekly() {
-  return getDocs(query(collection(db, "entries"), where("weekNumber", "==", selectedWeekNumber)));
+  return getDocs(query(
+    collection(db, "entries"),
+    where("weekNumber", "==", selectedWeekNumber),
+    where("year", "==", currentYear)
+  ));
 }
 
 window.loadWeekly = async function () {
+  showLoading();
+  const snap = await fetchWeekly();
   const weeklyOutput = document.getElementById("weeklyOutput");
   const chartContainer = document.getElementById("weeklyChartContainer");
 
-  weeklyOutput.innerHTML = "";
-  if (chartContainer) chartContainer.style.display = "none";
-  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-
-  showLoading();
-  const snap = await fetchWeekly();
-  
   if (snap.empty) {
-    weeklyOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    weeklyOutput.innerHTML = "هیچ تۆمارێک نییە لەم هەفتەیەدا";
     if (chartContainer) chartContainer.style.display = "none";
-    if (chartInstance) chartInstance.destroy();
     hideLoading();
     return;
   }
 
   const staffName = currentUser ? currentUser.email.toLowerCase().split('@')[0] : "";
-
   const totals = {};
+  
   snap.forEach(d => {
     const x = d.data();
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
@@ -1172,34 +1160,32 @@ window.loadWeekly = async function () {
   });
 
   if (Object.keys(totals).length === 0) {
-    weeklyOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم هەفتەیەدا</p>";
+    weeklyOutput.innerHTML = "هیچ تۆمارێک نییە لەم هەفتەیەدا";
     if (chartContainer) chartContainer.style.display = "none";
-    if (chartInstance) chartInstance.destroy();
     hideLoading();
     return;
   }
 
-  let html = `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
-    <thead><tr style="background: #3498db; color: white;">
-      <th style="padding: 10px;">کارمەند</th>
-      <th style="padding: 10px;">🧑 گەورە</th>
-      <th style="padding: 10px;">🧒 منال</th>
-      <th style="padding: 10px;">کۆی گشتی</th>
-      <th style="padding: 10px;">بەروارەکان</th>
-      </tr></thead><tbody>`;
+  let html = `<table><thead><tr>
+    <th>کارمەند</th>
+    <th>🧑 گەورە</th>
+    <th>🧒 منال</th>
+    <th>کۆی گشتی</th>
+    <th>بەروارەکان</th>
+  </tr></thead><tbody>`;
   const chartLabels = [], chartData = [];
   let grandAdult = 0, grandChild = 0;
 
   for (const [s, t] of Object.entries(totals)) {
     const total = t.adult + t.child;
     const datesStr = [...new Set(t.dates)].join(" | ");
-    html += `<tr style="border-bottom: 1px solid #eee;">
-      <td style="padding: 8px; text-align: center;">${s}</td>
-      <td style="padding: 8px; text-align: center;">${t.adult}</td>
-      <td style="padding: 8px; text-align: center;">${t.child}</td>
-      <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
-      <td style="padding: 8px; text-align: center; direction: ltr; font-size:12px;">${datesStr}</td>
-      </tr>`;
+    html += `<tr>
+      <td>${s}</td>
+      <td>${t.adult}</td>
+      <td>${t.child}</td>
+      <td>${total}</td>
+      <td>${datesStr}</td>
+    </tr>`;
     chartLabels.push(s);
     chartData.push(total);
     grandAdult += t.adult;
@@ -1207,16 +1193,16 @@ window.loadWeekly = async function () {
   }
 
   if (isCurrentUserAdmin && Object.keys(totals).length > 1) {
-    html += `<tr style="background: #eaf4fb; font-weight: bold;">
-      <td style="padding: 8px;">کۆی گشتی</td>
-      <td style="padding: 8px; text-align: center;">${grandAdult}</td>
-      <td style="padding: 8px; text-align: center;">${grandChild}</td>
-      <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
-      <td style="padding: 8px; text-align: center;">-</td>
-      </tr>`;
+    html += `<tr class="total-row">
+      <td>کۆی گشتی</td>
+      <td>${grandAdult}</td>
+      <td>${grandChild}</td>
+      <td>${grandAdult + grandChild}</td>
+      <td>-</td>
+    </tr>`;
   }
 
-  html += `</tbody></table></div>`;
+  html += `</tbody></table>`;
   weeklyOutput.innerHTML = html;
   
   if (chartContainer) {
@@ -1251,10 +1237,10 @@ function drawChart(labels, data) {
       maintainAspectRatio: true,
       plugins: { 
         legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
-        tooltip: { enabled: true, bodyFont: { size: 11 } }
+        tooltip: { enabled: true }
       },
       scales: {
-        y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+        y: { beginAtZero: true },
         x: { ticks: { font: { size: 10 } } }
       }
     }
@@ -1263,11 +1249,9 @@ function drawChart(labels, data) {
 
 window.switchChartType = function(type) {
   if (!chartInstance) return;
-  
   const currentLabels = chartInstance.data.labels;
   const currentData = chartInstance.data.datasets[0].data;
   const ctx = document.getElementById("weeklyChart").getContext("2d");
-  
   if (chartInstance) chartInstance.destroy();
   
   const config = {
@@ -1286,29 +1270,24 @@ window.switchChartType = function(type) {
       responsive: true,
       maintainAspectRatio: true,
       plugins: { 
-        legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
-        tooltip: { enabled: true, bodyFont: { size: 11 } }
+        legend: { display: true, position: 'top' },
+        tooltip: { enabled: true }
       }
     }
   };
   
   if (type === 'pie') {
     config.data.datasets[0].backgroundColor = [
-      'rgba(52,152,219,0.7)',
-      'rgba(46,204,113,0.7)',
-      'rgba(231,76,60,0.7)',
-      'rgba(241,196,15,0.7)',
-      'rgba(155,89,182,0.7)'
+      'rgba(52,152,219,0.7)', 'rgba(46,204,113,0.7)',
+      'rgba(231,76,60,0.7)', 'rgba(241,196,15,0.7)', 'rgba(155,89,182,0.7)'
     ];
     config.options.plugins.legend.position = 'right';
   } else if (type === 'bar') {
     config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.7)";
-    config.options.plugins.legend.position = 'top';
   } else if (type === 'line') {
     config.data.datasets[0].backgroundColor = "rgba(52,152,219,0.1)";
     config.data.datasets[0].fill = true;
     config.data.datasets[0].tension = 0.3;
-    config.options.plugins.legend.position = 'top';
   }
   
   chartInstance = new Chart(ctx, config);
@@ -1330,7 +1309,7 @@ function populateMonthDropdown() {
   const currentMonth = new Date().getMonth();
   
   for (let i = 0; i < 12; i++) {
-    let option = document.createElement("option");
+    const option = document.createElement("option");
     option.value = i;
     option.textContent = months[i];
     if (i === currentMonth) option.selected = true;
@@ -1338,17 +1317,10 @@ function populateMonthDropdown() {
   }
 }
 
-window.selectMonth = function() {
-  loadMonthly();
-};
-
 async function fetchMonthly() {
-  const year = new Date().getFullYear();
-  const month = parseInt(document.getElementById("monthSelector").value);
-  
-  const startDate = new Date(year, month, 1);
-  const endDate = new Date(year, month + 1, 0);
-  endDate.setHours(23, 59, 59);
+  const monthVal = parseInt(document.getElementById("monthSelector").value);
+  const startDate = new Date(currentYear, monthVal, 1, 0, 0, 0);
+  const endDate = new Date(currentYear, monthVal + 1, 0, 23, 59, 59);
   
   return getDocs(query(
     collection(db, "entries"),
@@ -1358,20 +1330,14 @@ async function fetchMonthly() {
 }
 
 window.loadMonthly = async function () {
-  const monthlyOutput = document.getElementById("monthlyOutput");
-  const monthlyChartContainer = document.getElementById("monthlyChartContainer");
-
-  monthlyOutput.innerHTML = "";
-  if (monthlyChartContainer) monthlyChartContainer.style.display = "none";
-  if (monthlyChartInstance) { monthlyChartInstance.destroy(); monthlyChartInstance = null; }
-  
   showLoading();
   const snap = await fetchMonthly();
+  const monthlyOutput = document.getElementById("monthlyOutput");
+  const monthlyChartContainer = document.getElementById("monthlyChartContainer");
   
   if (snap.empty) {
-    monthlyOutput.innerHTML = "<p style='text-align:center;'>هیچ تۆمارێک نییە لەم مانگەدا</p>";
+    monthlyOutput.innerHTML = "هیچ تۆمارێک نییە لەم مانگەدا";
     if (monthlyChartContainer) monthlyChartContainer.style.display = "none";
-    if (monthlyChartInstance) monthlyChartInstance.destroy();
     hideLoading();
     return;
   }
@@ -1388,72 +1354,66 @@ window.loadMonthly = async function () {
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
     
-    if (!dailyTotals[dateStr]) {
-      dailyTotals[dateStr] = { adult: 0, child: 0 };
-    }
+    if (!dailyTotals[dateStr]) dailyTotals[dateStr] = { adult: 0, child: 0 };
     dailyTotals[dateStr].adult += adult;
     dailyTotals[dateStr].child += child;
     
-    if (!staffTotals[x.staff]) {
-      staffTotals[x.staff] = { adult: 0, child: 0 };
-    }
+    if (!staffTotals[x.staff]) staffTotals[x.staff] = { adult: 0, child: 0 };
     staffTotals[x.staff].adult += adult;
     staffTotals[x.staff].child += child;
   });
   
-  let html = "<h3>📊 پوختەی کارمەندان</h3>";
-  html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
-    <thead><tr style="background: #3498db; color: white;">
-      <th style="padding: 10px;">کارمەند</th>
-      <th style="padding: 10px;">🧑 گەورە</th>
-      <th style="padding: 10px;">🧒 منال</th>
-      <th style="padding: 10px;">کۆی گشتی</th>
-      </tr></thead><tbody>`;
+  let html = `<h3 style="margin-bottom:10px;">📊 پوختەی کارمەندان</h3>`;
+  html += `<table><thead><tr>
+    <th>کارمەند</th>
+    <th>🧑 گەورە</th>
+    <th>🧒 منال</th>
+    <th>کۆی گشتی</th>
+  </tr></thead><tbody>`;
   
   let grandAdult = 0, grandChild = 0;
   for (const [staff, totals] of Object.entries(staffTotals)) {
     const total = totals.adult + totals.child;
-    html += `<tr style="border-bottom: 1px solid #eee;">
-      <td style="padding: 8px; text-align: center;">${staff}</td>
-      <td style="padding: 8px; text-align: center;">${totals.adult}</td>
-      <td style="padding: 8px; text-align: center;">${totals.child}</td>
-      <td style="padding: 8px; text-align: center;"><strong>${total}</strong></td>
-      </tr>`;
+    html += `<tr>
+      <td>${staff}</td>
+      <td>${totals.adult}</td>
+      <td>${totals.child}</td>
+      <td>${total}</td>
+    </tr>`;
     grandAdult += totals.adult;
     grandChild += totals.child;
   }
-  html += `<tr style="background: #eaf4fb; font-weight: bold;">
-    <td style="padding: 8px;">کۆی گشتی</td>
-    <td style="padding: 8px; text-align: center;">${grandAdult}</td>
-    <td style="padding: 8px; text-align: center;">${grandChild}</td>
-    <td style="padding: 8px; text-align: center;"><strong>${grandAdult + grandChild}</strong></td>
-    </tr></tbody></table></div>`;
+  html += `<tr class="total-row">
+    <td>کۆی گشتی</td>
+    <td>${grandAdult}</td>
+    <td>${grandChild}</td>
+    <td>${grandAdult + grandChild}</td>
+  </tr></tbody></table>`;
   
-  html += "<h3 style='margin-top:20px;'>📅 ڕۆژانە</h3>";
-  html += `<div style="overflow-x: auto;"><table style="width:100%; border-collapse: collapse;">
-    <thead><tr style="background: #3498db; color: white;">
-      <th style="padding: 10px;">ڕێکەوت</th>
-      <th style="padding: 10px;">🧑 گەورە</th>
-      <th style="padding: 10px;">🧒 منال</th>
-      <th style="padding: 10px;">کۆی گشتی</th>
-      </tr></thead><tbody>`;
+  html += `<h3 style="margin: 15px 0 10px;">📅 ڕۆژانە</h3>`;
+  html += `<table><thead><tr>
+    <th>ڕێکەوت</th>
+    <th>🧑 گەورە</th>
+    <th>🧒 منال</th>
+    <th>کۆی گشتی</th>
+  </tr></thead><tbody>`;
   
   const sortedDates = Object.keys(dailyTotals).sort((a, b) => {
     const [da, ma, ya] = a.split('/');
-    const [db, mb, yb] = b.split('/');
-    return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+    const [db2, mb, yb] = b.split('/');
+    return new Date(ya, ma-1, da) - new Date(yb, mb-1, db2);
   });
   
   for (const date of sortedDates) {
     const t = dailyTotals[date];
-    html += `<tr style="border-bottom: 1px solid #eee;">
-      <td style="padding: 8px; text-align: center;">${date}</td>
-      <td style="padding: 8px; text-align: center;">${t.adult}</td>
-      <td style="padding: 8px; text-align: center;">${t.child}</td>
-      <td style="padding: 8px; text-align: center;"><strong>${t.adult + t.child}</strong></td>
-      </tr>`;
+    html += `<tr>
+      <td>${date}</td>
+      <td>${t.adult}</td>
+      <td>${t.child}</td>
+      <td>${t.adult + t.child}</td>
+    </tr>`;
   }
-  html += `</tbody></table></div>`;
+  html += `</tbody></table>`;
   
   monthlyOutput.innerHTML = html;
   
@@ -1474,7 +1434,7 @@ function drawMonthlyChart(labels, adultData, childData) {
   monthlyChartInstance = new Chart(ctx, {
     type: "line",
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
           label: "🧑 گەورە",
@@ -1502,7 +1462,7 @@ function drawMonthlyChart(labels, adultData, childData) {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { position: 'top', labels: { font: { size: 11 } } },
+        legend: { position: 'top' },
         title: { display: true, text: 'ڕەوتی ڕۆژانەی نەخۆشەکان', font: { size: 12 } }
       }
     }
@@ -1510,7 +1470,7 @@ function drawMonthlyChart(labels, adultData, childData) {
 }
 
 // ============================================
-// EXPORT FUNCTIONS (Excel & PDF)
+// EXPORT FUNCTIONS
 // ============================================
 window.exportDailyExcel = async function () {
   const snap = await fetchDailyForCurrentUser();
@@ -1531,7 +1491,6 @@ window.exportDailyExcel = async function () {
   });
 
   data.push(["کۆی گشتی", totalAdult, totalChild, totalAdult + totalChild, "-"]);
-
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "ئاماری ڕۆژانە");
   XLSX.writeFile(wb, `daily_${document.getElementById("dailyFilterDate").value}.xlsx`);
@@ -1560,7 +1519,6 @@ window.exportDailyPDF = async function () {
   });
 
   rows.push(["Total", totalAdult, totalChild, totalAdult + totalChild, "-"]);
-
   pdfDoc.autoTable({
     head: [["Staff", "Adult", "Child", "Total", "Date"]],
     body: rows,
@@ -1568,7 +1526,6 @@ window.exportDailyPDF = async function () {
     headStyles: { fillColor: [52, 152, 219] },
     styles: { fontSize: 9 }
   });
-
   pdfDoc.save(`daily_${document.getElementById("dailyFilterDate").value}.pdf`);
 };
 
@@ -1591,7 +1548,6 @@ window.exportWeeklyExcel = async function () {
   });
 
   data.push(["کۆی گشتی", grandAdult, grandChild, grandAdult + grandChild, "-", "-"]);
-
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "هەفتانە");
   XLSX.writeFile(wb, "weekly_stats_detailed.xlsx");
@@ -1628,7 +1584,6 @@ window.exportWeeklyPDF = async function () {
     headStyles: { fillColor: [52, 152, 219] },
     styles: { fontSize: 9 }
   });
-
   pdfDoc.save("weekly_stats.pdf");
 };
 
@@ -1651,9 +1606,8 @@ window.exportMonthlyExcel = async function () {
   });
   
   data.push(["کۆی گشتی", grandAdult, grandChild, grandAdult + grandChild, "-"]);
-  
   const wb = XLSX.utils.book_new();
-  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const monthName = months[parseInt(document.getElementById("monthSelector").value)];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), `monthly_${monthName}`);
   XLSX.writeFile(wb, `monthly_${monthName}.xlsx`);
@@ -1668,7 +1622,7 @@ window.exportMonthlyPDF = async function () {
   const pdfDoc = new jsPDF();
   pdfDoc.setFontSize(14);
   
-  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const monthName = months[parseInt(document.getElementById("monthSelector").value)];
   pdfDoc.text(`Monthly Statistics - ${monthName}`, 14, 15);
   
@@ -1685,7 +1639,6 @@ window.exportMonthlyPDF = async function () {
   });
   
   rows.push(["Total", grandAdult, grandChild, grandAdult + grandChild, "-"]);
-  
   pdfDoc.autoTable({
     head: [["Staff", "Adult", "Child", "Total", "Date"]],
     body: rows,
@@ -1693,7 +1646,6 @@ window.exportMonthlyPDF = async function () {
     headStyles: { fillColor: [52, 152, 219] },
     styles: { fontSize: 8 }
   });
-  
   pdfDoc.save(`monthly_${monthName}.pdf`);
 };
 
@@ -1717,12 +1669,12 @@ window.backupData = async function () {
       users: []
     };
     
-    entriesSnap.forEach(doc => {
-      backupData.entries.push({ id: doc.id, ...doc.data() });
+    entriesSnap.forEach(d => {
+      backupData.entries.push({ id: d.id, ...d.data() });
     });
     
-    usersSnap.forEach(doc => {
-      backupData.users.push({ id: doc.id, ...doc.data() });
+    usersSnap.forEach(d => {
+      backupData.users.push({ id: d.id, ...d.data() });
     });
     
     const jsonStr = JSON.stringify(backupData, null, 2);
@@ -1764,14 +1716,14 @@ window.handleRestore = async function(event) {
     const backupData = JSON.parse(text);
     
     const entriesSnap = await getDocs(collection(db, "entries"));
-    for (const doc of entriesSnap.docs) {
-      await deleteDoc(doc.ref);
+    for (const d of entriesSnap.docs) {
+      await deleteDoc(d.ref);
     }
     
     const usersSnap = await getDocs(collection(db, "users"));
-    for (const doc of usersSnap.docs) {
-      if (doc.id !== currentUser.email.toLowerCase()) {
-        await deleteDoc(doc.ref);
+    for (const d of usersSnap.docs) {
+      if (d.id !== currentUser.email.toLowerCase()) {
+        await deleteDoc(d.ref);
       }
     }
     
@@ -1799,46 +1751,35 @@ window.handleRestore = async function(event) {
 // EVENT LISTENERS
 // ============================================
 document.addEventListener("DOMContentLoaded", () => {
-    if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", window.login);
-    if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", window.logout);
-    if(document.getElementById("themeToggle")) document.getElementById("themeToggle").addEventListener("click", window.toggleTheme);
-    
-    if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", window.toggleAdminForm);
-    if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", window.createStaff);
-    
-    if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", window.saveEntry);
-    
-    if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", window.loadDaily);
-    if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", window.exportDailyExcel);
-    if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", window.exportDailyPDF);
-    
-    if(document.getElementById("dailyFilterDate")) document.getElementById("dailyFilterDate").addEventListener("change", window.loadDaily);
-    
-    if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", window.loadWeekly);
-    if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", window.exportWeeklyExcel);
-    if(document.getElementById("btnExportWeeklyPDF")) document.getElementById("btnExportWeeklyPDF").addEventListener("click", window.exportWeeklyPDF);
-    
-    if(document.getElementById("btnLoadMonthly")) document.getElementById("btnLoadMonthly").addEventListener("click", window.loadMonthly);
-    if(document.getElementById("btnExportMonthlyExcel")) document.getElementById("btnExportMonthlyExcel").addEventListener("click", window.exportMonthlyExcel);
-    if(document.getElementById("btnExportMonthlyPDF")) document.getElementById("btnExportMonthlyPDF").addEventListener("click", window.exportMonthlyPDF);
-    if(document.getElementById("monthSelector")) document.getElementById("monthSelector").addEventListener("change", window.selectMonth);
-    
-    if(document.getElementById("staffSearchSelect")) document.getElementById("staffSearchSelect").addEventListener("change", window.searchByStaff);
-    
-    if(document.getElementById("backupBtn")) document.getElementById("backupBtn").addEventListener("click", window.backupData);
-    if(document.getElementById("restoreBtn")) document.getElementById("restoreBtn").addEventListener("click", window.restoreBackup);
-    if(document.getElementById("restoreFile")) document.getElementById("restoreFile").addEventListener("change", window.handleRestore);
-    
-    if(document.getElementById("chartTypeBar")) document.getElementById("chartTypeBar").addEventListener("click", () => window.switchChartType('bar'));
-    if(document.getElementById("chartTypeLine")) document.getElementById("chartTypeLine").addEventListener("click", () => window.switchChartType('line'));
-    if(document.getElementById("chartTypePie")) document.getElementById("chartTypePie").addEventListener("click", () => window.switchChartType('pie'));
-    
-    if(document.getElementById("userManagementBtn")) {
-      document.getElementById("userManagementBtn").addEventListener("click", window.showUserManagement);
-    }
-    
-    document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = true);
-    setTimeout(() => {
-      document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
-    }, 800);
+  if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", window.login);
+  if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", window.logout);
+  if(document.getElementById("themeToggle")) document.getElementById("themeToggle").addEventListener("click", window.toggleTheme);
+  
+  if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", window.toggleAdminForm);
+  if(document.getElementById("btnCreateStaff")) document.getElementById("btnCreateStaff").addEventListener("click", window.createStaff);
+  
+  if(document.getElementById("btnSaveEntry")) document.getElementById("btnSaveEntry").addEventListener("click", window.saveEntry);
+  
+  if(document.getElementById("btnLoadDaily")) document.getElementById("btnLoadDaily").addEventListener("click", window.loadDaily);
+  if(document.getElementById("btnExportDailyExcel")) document.getElementById("btnExportDailyExcel").addEventListener("click", window.exportDailyExcel);
+  if(document.getElementById("btnExportDailyPDF")) document.getElementById("btnExportDailyPDF").addEventListener("click", window.exportDailyPDF);
+  
+  if(document.getElementById("dailyFilterDate")) document.getElementById("dailyFilterDate").addEventListener("change", window.loadDaily);
+  
+  if(document.getElementById("btnLoadWeekly")) document.getElementById("btnLoadWeekly").addEventListener("click", window.loadWeekly);
+  if(document.getElementById("btnExportWeeklyExcel")) document.getElementById("btnExportWeeklyExcel").addEventListener("click", window.exportWeeklyExcel);
+  if(document.getElementById("btnExportWeeklyPDF")) document.getElementById("btnExportWeeklyPDF").addEventListener("click", window.exportWeeklyPDF);
+  
+  if(document.getElementById("btnLoadMonthly")) document.getElementById("btnLoadMonthly").addEventListener("click", window.loadMonthly);
+  if(document.getElementById("btnExportMonthlyExcel")) document.getElementById("btnExportMonthlyExcel").addEventListener("click", window.exportMonthlyExcel);
+  if(document.getElementById("btnExportMonthlyPDF")) document.getElementById("btnExportMonthlyPDF").addEventListener("click", window.exportMonthlyPDF);
+  
+  if(document.getElementById("chartTypeBar")) document.getElementById("chartTypeBar").addEventListener("click", () => window.switchChartType('bar'));
+  if(document.getElementById("chartTypeLine")) document.getElementById("chartTypeLine").addEventListener("click", () => window.switchChartType('line'));
+  if(document.getElementById("chartTypePie")) document.getElementById("chartTypePie").addEventListener("click", () => window.switchChartType('pie'));
+  
+  if(document.getElementById("btnSearchStaff")) document.getElementById("btnSearchStaff").addEventListener("click", window.searchByStaff);
+  if(document.getElementById("btnBackup")) document.getElementById("btnBackup").addEventListener("click", window.backupData);
+  if(document.getElementById("btnRestore")) document.getElementById("btnRestore").addEventListener("click", window.restoreBackup);
+  if(document.getElementById("restoreFile")) document.getElementById("restoreFile").addEventListener("change", window.handleRestore);
 });
