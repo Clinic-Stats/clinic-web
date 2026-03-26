@@ -83,7 +83,7 @@
 
       <div class="sidebar-footer">
         <button class="logout-btn" id="btnLogout">🚪 دەرچوون</button>
-        <button id="themeSidebarBtn" class="theme-btn" onclick="window.toggleTheme()">🌙 Dark Mode</button>
+        <button id="themeSidebarBtn" class="theme-btn">🌙 Dark Mode</button>
       </div>
     </aside>
 
@@ -97,7 +97,7 @@
         </div>
         <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
         <div class="topbar-right">
-          <button class="topbar-icon-btn theme-topbar" id="themeToggle" onclick="window.toggleTheme()">🌙</button>
+          <button class="topbar-icon-btn theme-topbar" id="themeToggle">🌙</button>
           <span id="currentUserName" class="topbar-user"></span>
         </div>
       </div>
@@ -719,45 +719,10 @@
   </script>
   <script type="module" src="app.js"></script>
 
-  <!-- Sync sidebar with auth state -->
-  <script type="module">
+  <!-- Clinic fixes: theme, admin nav, save validation -->
+  <script>
 
-    // ── 1. Sync username to sidebar ──────────────────────────────────────────
-    const uObs = new MutationObserver(() => {
-      const name = document.getElementById('currentUserName')?.textContent;
-      const sn   = document.getElementById('sidebarUserName');
-      if (sn && name) sn.textContent = name;
-    });
-    const uEl = document.getElementById('currentUserName');
-    if (uEl) uObs.observe(uEl, {childList:true, subtree:true, characterData:true});
-
-    // ── 2. Admin nav: watch BOTH adminSection AND dashboard visibility ────────
-    function syncAdminNav() {
-      const a = document.getElementById('adminSection');
-      const isAdmin = a && a.style.display !== 'none';
-      ['adminNavLabel','adminNavItem','searchNavItem','qrNavItem','backupNavItem'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = isAdmin ? '' : 'none';
-      });
-    }
-
-    // Watch adminSection style changes
-    const adminEl = document.getElementById('adminSection');
-    if (adminEl) {
-      new MutationObserver(syncAdminNav)
-        .observe(adminEl, {attributes:true, attributeFilter:['style']});
-    }
-
-    // Watch dashboard display changes (login/logout cycles)
-    const dashEl = document.getElementById('dashboard');
-    if (dashEl) {
-      new MutationObserver(() => {
-        // small delay so app.js finishes setting admin state
-        setTimeout(syncAdminNav, 300);
-      }).observe(dashEl, {attributes:true, attributeFilter:['style']});
-    }
-
-    // ── 3. Theme toggle — wait for app.js to register window.toggleTheme ─────
+    // ── THEME: works by watching body class changes directly ─────────────────
     function syncThemeUI() {
       const isDark = document.body.classList.contains('dark-mode');
       const sideBtn = document.getElementById('themeSidebarBtn');
@@ -766,29 +731,150 @@
       if (topBtn)  topBtn.textContent  = isDark ? '☀️' : '🌙';
     }
 
-    // Poll until app.js exposes window.toggleTheme, then wrap it
-    let patchAttempts = 0;
-    const patchInterval = setInterval(() => {
-      patchAttempts++;
-      if (typeof window.toggleTheme === 'function') {
-        clearInterval(patchInterval);
-        const orig = window.toggleTheme;
-        window.toggleTheme = function() {
-          orig();
-          syncThemeUI();
-        };
-        // Also wire the topbar button directly (in case onclick fires before patch)
-        const topBtn = document.getElementById('themeToggle');
-        if (topBtn) topBtn.onclick = window.toggleTheme;
-        // Sync UI to whatever theme is already saved in localStorage
-        syncThemeUI();
-      }
-      if (patchAttempts > 50) clearInterval(patchInterval); // give up after 5s
-    }, 100);
+    // Watch body classList for dark-mode changes (most reliable approach)
+    new MutationObserver(syncThemeUI)
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-    // Also sync once on DOMContentLoaded in case theme is already applied
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(syncThemeUI, 500);
+    // Topbar theme button — directly calls app.js toggleTheme after DOM ready
+    document.addEventListener('DOMContentLoaded', function() {
+      syncThemeUI(); // sync icon to saved theme on load
+
+      const topBtn = document.getElementById('themeToggle');
+      if (topBtn) {
+        topBtn.onclick = function() {
+          if (typeof window.toggleTheme === 'function') window.toggleTheme();
+        };
+      }
+      const sideBtn = document.getElementById('themeSidebarBtn');
+      if (sideBtn) {
+        sideBtn.onclick = function() {
+          if (typeof window.toggleTheme === 'function') window.toggleTheme();
+        };
+      }
+    });
+
+    // ── ADMIN NAV: watch adminSection style reliably ─────────────────────────
+    function syncAdminNav() {
+      const a = document.getElementById('adminSection');
+      const isAdmin = a && a.style.display !== 'none';
+      ['adminNavLabel','adminNavItem','searchNavItem','qrNavItem','backupNavItem'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isAdmin ? '' : 'none';
+      });
+    }
+
+    // Watch adminSection style attribute
+    document.addEventListener('DOMContentLoaded', function() {
+      const adminEl = document.getElementById('adminSection');
+      if (adminEl) {
+        new MutationObserver(syncAdminNav)
+          .observe(adminEl, { attributes: true, attributeFilter: ['style'] });
+      }
+      // Watch loginPage — when it hides (login), re-check admin after delay
+      const loginEl = document.getElementById('loginPage');
+      if (loginEl) {
+        new MutationObserver(function() {
+          setTimeout(syncAdminNav, 600);
+          setTimeout(syncAdminNav, 1500); // double check after Firebase responds
+        }).observe(loginEl, { attributes: true, attributeFilter: ['style'] });
+      }
+      // Also watch dashboard visibility
+      const dashEl = document.getElementById('dashboard');
+      if (dashEl) {
+        new MutationObserver(function() {
+          setTimeout(syncAdminNav, 600);
+          setTimeout(syncAdminNav, 1500);
+        }).observe(dashEl, { attributes: true, attributeFilter: ['style'] });
+      }
+    });
+
+    // ── USERNAME SYNC ─────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+      const uEl = document.getElementById('currentUserName');
+      if (uEl) {
+        new MutationObserver(function() {
+          const sn = document.getElementById('sidebarUserName');
+          if (sn) sn.textContent = uEl.textContent;
+        }).observe(uEl, { childList: true, subtree: true, characterData: true });
+      }
+    });
+
+    // ── SAVE VALIDATION: future date warning + zero count check ──────────────
+    document.addEventListener('DOMContentLoaded', function() {
+
+      // Show warning banner near save button if date is future
+      function checkDateWarning() {
+        const dateInput = document.getElementById('entryDate');
+        let warn = document.getElementById('futureDateWarn');
+        if (!dateInput) return;
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const chosen = new Date(dateInput.value);
+        if (dateInput.value && chosen > today) {
+          if (!warn) {
+            warn = document.createElement('p');
+            warn.id = 'futureDateWarn';
+            warn.style.cssText = 'color:#e67e22;font-weight:700;font-size:13px;margin-top:6px;background:#fff8e1;padding:8px 12px;border-radius:8px;border:1px solid #f0c040;';
+            warn.textContent = '⚠️ ئاگادارکردنەوە: ڕێکەوتەکە بۆ داهاتوو دانراوە!';
+            dateInput.insertAdjacentElement('afterend', warn);
+          }
+          warn.style.display = 'block';
+        } else {
+          if (warn) warn.style.display = 'none';
+        }
+      }
+
+      const dateInp = document.getElementById('entryDate');
+      if (dateInp) dateInp.addEventListener('change', checkDateWarning);
+
+      // Intercept + buttons to show save button highlight after first tap
+      ['patientCountAdult','patientCountChild'].forEach(function(id) {
+        const inp = document.getElementById(id);
+        if (inp) {
+          inp.addEventListener('input', function() {
+            const saveBtn = document.getElementById('btnSaveEntry');
+            if (saveBtn && (parseInt(inp.value)||0) > 0) {
+              saveBtn.style.boxShadow = '0 0 0 3px rgba(102,126,234,0.5)';
+            }
+          });
+        }
+      });
+
+      // Override save button to validate before allowing app.js to save
+      const saveBtn = document.getElementById('btnSaveEntry');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function(e) {
+          const adult = parseInt(document.getElementById('patientCountAdult')?.value) || 0;
+          const child = parseInt(document.getElementById('patientCountChild')?.value) || 0;
+
+          if (adult === 0 && child === 0) {
+            e.stopImmediatePropagation(); // block app.js handler
+            let msg = document.getElementById('statusMsg');
+            if (msg) {
+              msg.style.color = '#e74c3c';
+              msg.textContent = '⚠️ تکایە ژمارەی نەخۆش داخڵ بکە پێش پاشکەوتکردن!';
+              setTimeout(function(){ if(msg.textContent.includes('داخڵ بکە')) msg.textContent=''; }, 3000);
+            }
+            return false;
+          }
+
+          const dateInput = document.getElementById('entryDate');
+          if (dateInput && dateInput.value) {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const chosen = new Date(dateInput.value);
+            if (chosen > today) {
+              e.stopImmediatePropagation();
+              let msg = document.getElementById('statusMsg');
+              if (msg) {
+                msg.style.color = '#e74c3c';
+                msg.textContent = '⛔ ناتوانیت بۆ ڕێکەوتی داهاتوو تۆمار بکەیت!';
+                setTimeout(function(){ if(msg.textContent.includes('داهاتوو')) msg.textContent=''; }, 3000);
+              }
+              return false;
+            }
+          }
+        }, true); // capture phase — runs before app.js
+      }
     });
 
   </script>
