@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>سیستەمی کلینیک - Clinic Management System</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -13,370 +15,681 @@
 </head>
 <body>
 
-  <!-- Loading Spinner -->
   <div id="loadingSpinner" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
     <div class="spinner"></div>
   </div>
 
-  <!-- شاشەی چوونەژوورەوە -->
+  <!-- LOGIN -->
   <div id="loginPage">
-    <div class="card login-card">
-      <h1>🏥 چوونە ژوورەوە</h1>
-      <label>ناوی کارمەند:</label>
-      <input type="text" id="loginEmail" placeholder="نموونە: naza" onkeydown="if(event.key === 'Enter') document.getElementById('loginPassword').focus();">
-      <label>پاسوۆرد:</label>
-      <input type="password" id="loginPassword" placeholder="******" onkeydown="if(event.key === 'Enter') window.login();">
+    <div class="login-card">
+      <div class="login-logo">🏥</div>
+      <h1>سیستەمی کلینیک</h1>
+      <p class="login-subtitle">چوونە ژوورەوە بە ئەکاونتەکەت</p>
+      <label>ناوی کارمەند</label>
+      <input type="text" id="loginEmail" placeholder="نموونە: naza" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus();">
+      <label>پاسوۆرد</label>
+      <input type="password" id="loginPassword" placeholder="••••••" onkeydown="if(event.key==='Enter') window.login();">
       <button id="btnLogin">چوونەژوورەوە</button>
       <p id="loginError"></p>
     </div>
   </div>
 
-  <!-- شاشەی سەرەکی (داشبۆرد) -->
+  <!-- DASHBOARD -->
   <div id="dashboard" style="display:none;">
-    <div class="topbar">
-      <h1>📊 ئاماری نەخۆشان</h1>
-      <div class="topbar-buttons">
-        <button id="themeToggle" class="theme-btn">🌙</button>
-        <span id="currentUserName"></span>
-        <button class="logout-btn" id="btnLogout">دەرچوون</button>
+
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🏥</div>
+        <div class="sidebar-info">
+          <span class="sidebar-app-name">کلینیک</span>
+          <span id="sidebarUserName" class="sidebar-user"></span>
+        </div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-label-group">سەرەکی</div>
+
+        <a href="#" class="nav-item active" data-section="saveSection" onclick="showSection('saveSection',this)">
+          <span class="ni">📝</span><span class="nl">تۆمارکردنی نەخۆش</span><span class="na">›</span>
+        </a>
+        <a href="#" class="nav-item" data-section="dailySection" onclick="showSection('dailySection',this)">
+          <span class="ni">📅</span><span class="nl">ئاماری ڕۆژانە</span><span class="na">›</span>
+        </a>
+        <a href="#" class="nav-item" data-section="weeklySection" onclick="showSection('weeklySection',this)">
+          <span class="ni">📆</span><span class="nl">ئاماری هەفتانە</span><span class="na">›</span>
+        </a>
+        <a href="#" class="nav-item" data-section="monthlySection" onclick="showSection('monthlySection',this)">
+          <span class="ni">🗓️</span><span class="nl">ئاماری مانگانە</span><span class="na">›</span>
+        </a>
+
+        <div class="nav-label-group admin-label" id="adminNavLabel" style="display:none;">بەڕێوەبردن</div>
+        <a href="#" class="nav-item" data-section="adminSectionPage" id="adminNavItem" style="display:none;" onclick="showSection('adminSectionPage',this)">
+          <span class="ni">👑</span><span class="nl">بەڕێوەبردن</span><span class="na">›</span>
+        </a>
+        <a href="#" class="nav-item" data-section="searchSectionPage" id="searchNavItem" style="display:none;" onclick="showSection('searchSectionPage',this)">
+          <span class="ni">🔍</span><span class="nl">گەڕان بە کارمەند</span><span class="na">›</span>
+        </a>
+        <a href="#" class="nav-item" data-section="qrSectionPage" id="qrNavItem" style="display:none;" onclick="showSection('qrSectionPage',this)">
+          <span class="ni">📱</span><span class="nl">QR Code</span><span class="na">›</span>
+        </a>
+        <a href="#" class="nav-item" data-section="backupSectionPage" id="backupNavItem" style="display:none;" onclick="showSection('backupSectionPage',this)">
+          <span class="ni">💾</span><span class="nl">بەک‌ئەپ</span><span class="na">›</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="theme-btn" onclick="window.toggleTheme()">🌙 Dark Mode</button>
+        <button class="logout-btn" id="btnLogout">🚪 دەرچوون</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-wrap">
+      <div class="topbar">
+        <button class="burger" onclick="openSidebar()">
+          <span></span><span></span><span></span>
+        </button>
+        <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
+        <span id="currentUserName" class="topbar-user"></span>
+      </div>
+
+      <div class="content-area">
+
+        <!-- تۆمارکردنی نەخۆش -->
+        <section class="content-section active" id="saveSection">
+          <div class="sec-head"><span>📝</span><h2>تۆمارکردنی نەخۆش</h2></div>
+          <div class="card" style="text-align:center;">
+            <label>🧑 ژمارەی نەخۆشی گەورە:</label>
+            <div class="cnt-row">
+              <button type="button" onclick="window.changeCount('patientCountAdult',-1)" class="cnt-btn minus">−</button>
+              <input type="number" id="patientCountAdult" value="0" min="0" class="cnt-inp">
+              <button type="button" onclick="window.changeCount('patientCountAdult',1)" class="cnt-btn plus">+</button>
+            </div>
+            <label>🧒 ژمارەی نەخۆشی منال:</label>
+            <div class="cnt-row">
+              <button type="button" onclick="window.changeCount('patientCountChild',-1)" class="cnt-btn minus">−</button>
+              <input type="number" id="patientCountChild" value="0" min="0" class="cnt-inp">
+              <button type="button" onclick="window.changeCount('patientCountChild',1)" class="cnt-btn plus">+</button>
+            </div>
+            <label>📅 ڕێکەوت:</label>
+            <input type="date" id="entryDate" class="date-inp">
+            <button id="btnSaveEntry" class="save-btn">💾 پاشکەوتکردن</button>
+            <p id="statusMsg"></p>
+          </div>
+        </section>
+
+        <!-- ئاماری ڕۆژانە -->
+        <section class="content-section" id="dailySection">
+          <div class="sec-head"><span>📅</span><h2>ئاماری ڕۆژانە</h2></div>
+          <div class="card">
+            <label>ڕێکەوت هەڵبژێرە:</label>
+            <input type="date" id="dailyFilterDate" class="date-inp">
+            <div class="button-group">
+              <button id="btnLoadDaily">👁️ پیشاندان</button>
+              <button id="btnExportDailyExcel" class="btn-excel">📊 Excel</button>
+              <button id="btnExportDailyPDF" class="btn-pdf">📄 PDF</button>
+            </div>
+            <div id="dailyOutput" style="margin-top:15px; overflow-x:auto;"></div>
+          </div>
+        </section>
+
+        <!-- ئاماری هەفتانە -->
+        <section class="content-section" id="weeklySection">
+          <div class="sec-head"><span>📆</span><h2>ئاماری هەفتانە</h2></div>
+          <div class="card">
+            <div class="sel-wrap">
+              <select id="weekSelector" onchange="window.selectWeekFromDropdown()"></select>
+              <div id="weekDateRangeLabel" style="font-size:.9em;color:#888;text-align:center;margin-top:6px;"></div>
+            </div>
+            <div class="button-group">
+              <button id="btnLoadWeekly">👁️ پیشاندان</button>
+              <button id="btnExportWeeklyExcel" class="btn-excel">📊 Excel</button>
+              <button id="btnExportWeeklyPDF" class="btn-pdf">📄 PDF</button>
+            </div>
+            <div class="chart-btns">
+              <button id="chartTypeBar" class="chart-btn">📊 Bar</button>
+              <button id="chartTypeLine" class="chart-btn">📈 Line</button>
+              <button id="chartTypePie" class="chart-btn">🥧 Pie</button>
+            </div>
+            <div id="weeklyOutput" style="overflow-x:auto;"></div>
+            <div id="weeklyChartContainer" style="margin-top:20px;display:none;">
+              <canvas id="weeklyChart" height="250"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ئاماری مانگانە -->
+        <section class="content-section" id="monthlySection">
+          <div class="sec-head"><span>🗓️</span><h2>ئاماری مانگانە</h2></div>
+          <div class="card">
+            <div class="sel-wrap">
+              <select id="monthSelector" onchange="window.selectMonth()"></select>
+            </div>
+            <div class="button-group">
+              <button id="btnLoadMonthly">👁️ پیشاندان</button>
+              <button id="btnExportMonthlyExcel" class="btn-excel">📊 Excel</button>
+              <button id="btnExportMonthlyPDF" class="btn-pdf">📄 PDF</button>
+            </div>
+            <div id="monthlyOutput" style="overflow-x:auto;"></div>
+            <div id="monthlyChartContainer" style="margin-top:20px;display:none;">
+              <canvas id="monthlyChart" height="250"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- بەڕێوەبردن -->
+        <section class="content-section" id="adminSectionPage">
+          <div class="sec-head"><span>👑</span><h2>بەڕێوەبردن</h2></div>
+          <div class="card admin-panel" id="adminSection" style="border:2px solid #e74c3c;">
+            <button id="userManagementBtn" style="background:#9b59b6;margin-bottom:10px;">👥 بەڕێوەبردنی بەکارهێنەران</button>
+            <button id="toggleAdminBtn" style="background:#2c3e50;margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
+            <div id="adminFormWrapper" style="display:none;margin-top:15px;padding-top:15px;border-top:1px solid #ccc;">
+              <label>ناوی کارمەند:</label>
+              <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند بێ بۆشایی">
+              <label>پاسوۆرد:</label>
+              <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
+              <button id="btnCreateStaff" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
+              <p id="createStaffMsg"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- گەڕان -->
+        <section class="content-section" id="searchSectionPage">
+          <div class="sec-head"><span>🔍</span><h2>گەڕان بە پێی کارمەند</h2></div>
+          <div class="card" id="searchSection">
+            <select id="staffSearchSelect" style="width:100%;padding:12px;font-size:16px;border-radius:8px;">
+              <option value="">-- هەڵبژێرە کارمەندێک --</option>
+            </select>
+            <p style="font-size:12px;color:#666;margin-top:8px;">💡 کارمەندێک هەڵبژێرە، داتاکانی نیشان دەدرێت</p>
+            <div id="searchOutput" style="margin-top:15px;overflow-x:auto;"></div>
+          </div>
+        </section>
+
+        <!-- QR Code -->
+        <section class="content-section" id="qrSectionPage">
+          <div class="sec-head"><span>📱</span><h2>QR Code بۆ چوونەژوورەوە</h2></div>
+          <div class="card" id="qrCodeSection">
+            <button id="generateQrBtn" style="background:#27ae60;">🔲 پیشاندانی QR Code</button>
+            <div id="qrCodeDisplay" style="text-align:center;margin-top:20px;display:none;">
+              <div id="qrcode"></div>
+              <p style="margin-top:10px;font-size:12px;color:#666;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
+              <button id="downloadQrBtn" style="background:#3498db;width:auto;display:inline-block;margin-top:10px;">📥 دابەزاندنی وێنە</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- بەک‌ئەپ -->
+        <section class="content-section" id="backupSectionPage">
+          <div class="sec-head"><span>💾</span><h2>بەک‌ئەپ (Backup)</h2></div>
+          <div class="card" id="backupSection">
+            <div class="button-group">
+              <button id="backupBtn" style="background:#27ae60!important;">📥 دابەزاندنی بەک‌ئەپ</button>
+              <button id="restoreBtn" style="background:#e67e22!important;">📤 بەرجەستەکردنەوە</button>
+            </div>
+            <input type="file" id="restoreFile" style="display:none;" accept=".json">
+            <p style="font-size:12px;color:#666;text-align:center;margin-top:10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
+          </div>
+        </section>
+
       </div>
     </div>
-
-    <!-- بەشی بەڕێوەبەر -->
-    <section class="card admin-panel" id="adminSection" style="display:none; border: 2px solid #e74c3c;">
-      <h2>👑 بەڕێوەبردن</h2>
-      <button id="userManagementBtn" style="background:#9b59b6; margin-bottom:10px;">👥 بەڕێوەبردنی بەکارهێنەران</button>
-      <button id="toggleAdminBtn" style="background:#2c3e50; margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
-      
-      <div id="adminFormWrapper" style="display:none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-        <label>ناوی کارمەند:</label>
-        <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند بێ بۆشایی">
-        <label>پاسوۆرد:</label>
-        <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
-        <button id="btnCreateStaff" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
-        <p id="createStaffMsg"></p>
-      </div>
-    </section>
-
-    <!-- بەشی گەڕان (تەنها بۆ ئەدمین) -->
-    <section class="card" id="searchSection" style="display:none;">
-      <h2>🔍 گەڕان بە پێی کارمەند</h2>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <select id="staffSearchSelect" style="width: 100%; padding: 12px; font-size: 16px; border-radius: 8px;">
-          <option value="">-- هەڵبژێرە کارمەندێک --</option>
-        </select>
-        <p style="font-size: 12px; color: #666;">💡 کارمەندێک هەڵبژێرە، داتاکانی نیشان دەدرێت (تۆمارە سفرەکان نیشان نادرێن)</p>
-      </div>
-      <div id="searchOutput" style="margin-top: 15px; overflow-x: auto;"></div>
-    </section>
-
-    <!-- بەشی داخڵکردنی داتا -->
-    <section class="card" style="text-align: center;">
-      <h2>📝 تۆمارکردنی نەخۆش</h2>
-      
-      <label style="margin-top: 15px;">🧑 ژمارەی نەخۆشی گەورە:</label>
-      <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 15px; direction: ltr;">
-        <button type="button" onclick="window.changeCount('patientCountAdult', -1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #e74c3c; border-radius: 8px;">-</button>
-        <input type="number" id="patientCountAdult" value="0" min="0" style="width: 80px !important; height: 45px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 8px;">
-        <button type="button" onclick="window.changeCount('patientCountAdult', 1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #2ecc71; border-radius: 8px;">+</button>
-      </div>
-
-      <label style="margin-top: 5px;">🧒 ژمارەی نەخۆشی منال:</label>
-      <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; margin-bottom: 15px; direction: ltr;">
-        <button type="button" onclick="window.changeCount('patientCountChild', -1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #e74c3c; border-radius: 8px;">-</button>
-        <input type="number" id="patientCountChild" value="0" min="0" style="width: 80px !important; height: 45px; text-align: center; font-size: 20px; font-weight: bold; border-radius: 8px;">
-        <button type="button" onclick="window.changeCount('patientCountChild', 1)" style="width: 45px; height: 45px; font-size: 24px; font-weight: bold; background-color: #2ecc71; border-radius: 8px;">+</button>
-      </div>
-
-      <label>📅 ڕێکەوت:</label>
-      <input type="date" id="entryDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; border-radius: 8px;">
-      
-      <button id="btnSaveEntry" style="width: 100%;">💾 پاشکەوتکردن</button>
-      <p id="statusMsg"></p>
-    </section>
-
-    <!-- بەشی ئاماری ڕۆژانە -->
-    <section class="card" style="text-align: center;">
-      <h2>📅 ئاماری ڕۆژانە</h2>
-      <label>ڕێکەوت هەڵبژێرە:</label>
-      <input type="date" id="dailyFilterDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; border-radius: 8px;">
-      
-      <div class="button-group">
-        <button id="btnLoadDaily">👁️ پیشاندان</button>
-        <button id="btnExportDailyExcel" class="btn-excel">📊 Excel</button>
-        <button id="btnExportDailyPDF" class="btn-pdf">📄 PDF</button>
-      </div>
-      <div id="dailyOutput" style="margin-top: 15px; overflow-x: auto;"></div>
-    </section>
-
-    <!-- بەشی ئاماری هەفتانە -->
-    <section class="card">
-      <h2 style="text-align: center;">📆 ئاماری هەفتانە</h2>
-      
-      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 15px; border-radius: 8px; gap: 10px;">
-          <select id="weekSelector" onchange="window.selectWeekFromDropdown()" style="width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; font-weight: bold; text-align: center;">
-          </select>
-          <div id="weekDateRangeLabel" style="font-size: 0.9em; color: #555; text-align: center;"></div>
-      </div>
-
-      <div class="button-group">
-        <button id="btnLoadWeekly">👁️ پیشاندان</button>
-        <button id="btnExportWeeklyExcel" class="btn-excel">📊 Excel</button>
-        <button id="btnExportWeeklyPDF" class="btn-pdf">📄 PDF</button>
-      </div>
-      
-      <div style="margin: 15px 0; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <button id="chartTypeBar" style="width: auto; padding: 8px 20px;">📊 Bar</button>
-        <button id="chartTypeLine" style="width: auto; padding: 8px 20px;">📈 Line</button>
-        <button id="chartTypePie" style="width: auto; padding: 8px 20px;">🥧 Pie</button>
-      </div>
-      
-      <div id="weeklyOutput" style="overflow-x: auto;"></div>
-      <div id="weeklyChartContainer" style="margin-top: 20px; display: none;">
-        <canvas id="weeklyChart" height="250"></canvas>
-      </div>
-    </section>
-
-    <!-- بەشی ئاماری مانگانە -->
-    <section class="card">
-      <h2 style="text-align: center;">📅 ئاماری مانگانە</h2>
-      
-      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; background: #f0f4f8; padding: 15px; border-radius: 8px;">
-          <select id="monthSelector" onchange="window.selectMonth()" style="width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; font-weight: bold; text-align: center;">
-          </select>
-      </div>
-
-      <div class="button-group">
-        <button id="btnLoadMonthly">👁️ پیشاندان</button>
-        <button id="btnExportMonthlyExcel" class="btn-excel">📊 Excel</button>
-        <button id="btnExportMonthlyPDF" class="btn-pdf">📄 PDF</button>
-      </div>
-      
-      <div id="monthlyOutput" style="overflow-x: auto;"></div>
-      <div id="monthlyChartContainer" style="margin-top: 20px; display: none;">
-        <canvas id="monthlyChart" height="250"></canvas>
-      </div>
-    </section>
-
-    <!-- بەشی QR Code Generator (تەنها بۆ ئەدمین) -->
-    <section class="card" id="qrCodeSection" style="display:none;">
-      <h2 style="text-align: center;">📱 QR Code بۆ چوونەژوورەوە</h2>
-      <button id="generateQrBtn" style="background: #27ae60;">🔲 پیشاندانی QR Code</button>
-      <div id="qrCodeDisplay" style="text-align: center; margin-top: 20px; display: none;">
-        <div id="qrcode"></div>
-        <p style="margin-top: 10px; font-size: 12px; color: #666;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
-        <button id="downloadQrBtn" style="background: #3498db; width: auto; display: inline-block; margin-top: 10px;">📥 دابەزاندنی وێنە</button>
-      </div>
-    </section>
-
-    <!-- بەشی بەک‌ئەپ (تەنها بۆ ئەدمین) -->
-    <section class="card" id="backupSection" style="display:none;">
-      <h2 style="text-align: center;">💾 بەک‌ئەپ (Backup)</h2>
-      <div class="button-group">
-        <button id="backupBtn" class="btn-excel" style="background:#27ae60 !important;">📥 دابەزاندنی بەک‌ئەپ</button>
-        <button id="restoreBtn" class="btn-pdf" style="background:#e67e22 !important;">📤 بەرجەستەکردنەوە</button>
-      </div>
-      <input type="file" id="restoreFile" style="display:none;" accept=".json">
-      <p style="font-size: 12px; color: #666; text-align: center; margin-top: 10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
-    </section>
   </div>
 
   <style>
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
+    *{box-sizing:border-box;margin:0;padding:0;}
+
+    body{
+      font-family:'Vazirmatn','Segoe UI',sans-serif;
+      background:#f0f4f8;
+      min-height:100vh;
+      transition:background .3s,color .3s;
+      overflow-x:hidden;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+
+    /* LOGIN */
+    #loginPage{
+      display:flex;justify-content:center;align-items:center;
+      min-height:100vh;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      padding:20px;
     }
-    .topbar-buttons {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      flex-wrap: wrap;
+    .login-card{
+      background:white;border-radius:24px;padding:40px 32px;
+      width:100%;max-width:380px;
+      box-shadow:0 20px 60px rgba(0,0,0,.2);
+      text-align:center;
+      animation:slideUp .5s ease;
     }
-    .theme-btn {
-      background: transparent;
-      border: 1px solid white;
-      width: auto;
-      padding: 5px 10px;
-      margin: 0;
-      font-size: 18px;
+    .login-logo{font-size:52px;margin-bottom:12px;animation:bop 2s infinite;}
+    @keyframes bop{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+    .login-card h1{font-size:22px;font-weight:700;color:#2c3e50;margin-bottom:6px;}
+    .login-subtitle{color:#888;font-size:13px;margin-bottom:24px;}
+    .login-card label{text-align:right;font-size:13px;font-weight:600;color:#555;margin-top:14px;margin-bottom:4px;display:block;}
+    .login-card input{border:2px solid #e8ecf0;border-radius:12px;padding:12px 16px;font-size:15px;width:100%;transition:border-color .2s;font-family:inherit;display:block;margin-top:4px;}
+    .login-card input:focus{outline:none;border-color:#667eea;}
+    .login-card button{background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:14px;color:white;font-size:16px;font-weight:600;padding:14px;width:100%;margin-top:20px;cursor:pointer;font-family:inherit;transition:transform .2s,box-shadow .2s;display:block;}
+    .login-card button:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(102,126,234,.4);}
+    #loginError{color:#e74c3c;margin-top:10px;font-size:13px;}
+    body.dark-mode .login-card{background:#16213e;}
+    body.dark-mode .login-card h1{color:#eee;}
+    body.dark-mode .login-card label{color:#ccc;}
+
+    /* SIDEBAR */
+    .sidebar{
+      position:fixed;top:0;right:0;
+      width:272px;height:100vh;
+      background:#1a1d2e;
+      z-index:1000;
+      display:flex;flex-direction:column;
+      box-shadow:-4px 0 24px rgba(0,0,0,.18);
+      transition:transform .35s cubic-bezier(.4,0,.2,1);
     }
-    .theme-btn:hover {
-      background: rgba(255,255,255,0.2);
+    body.dark-mode .sidebar{background:#0d0e1c;}
+
+    @media(min-width:769px){
+      .sidebar{transform:translateX(0)!important;}
+      .sidebar-overlay{display:none!important;}
+      .sidebar-close{display:none!important;}
     }
-    @media (max-width: 768px) {
-      .card {
-        margin: 10px;
-        padding: 15px;
-      }
-      button {
-        padding: 12px;
-        font-size: 14px;
-      }
-      table {
-        font-size: 12px;
-      }
-      th, td {
-        padding: 6px;
-      }
-      .button-group {
-        flex-wrap: wrap;
-      }
-      .button-group button {
-        flex: 1;
-        min-width: 80px;
-      }
-      .topbar {
-        flex-direction: column;
-        text-align: center;
-      }
-      .topbar-buttons {
-        justify-content: center;
-      }
+    @media(max-width:768px){
+      .sidebar{transform:translateX(100%);}
+      .sidebar.open{transform:translateX(0);}
     }
-    #weeklyChart, #monthlyChart {
-      max-height: 200px !important;
-      height: 200px !important;
-      width: 100% !important;
+
+    .sidebar-overlay{
+      display:none;position:fixed;inset:0;
+      background:rgba(0,0,0,.5);z-index:999;
+      opacity:0;transition:opacity .3s;
+      backdrop-filter:blur(3px);
     }
-    #weeklyChartContainer, #monthlyChartContainer {
-      max-height: 220px;
-      margin: 10px 0;
+    .sidebar-overlay.active{display:block;opacity:1;}
+
+    .sidebar-header{
+      display:flex;align-items:center;gap:12px;
+      padding:22px 18px 18px;
+      border-bottom:1px solid rgba(255,255,255,.07);
     }
-    @media (max-width: 768px) {
-      #weeklyChart, #monthlyChart {
-        max-height: 160px !important;
-        height: 160px !important;
-      }
-      #weeklyChartContainer, #monthlyChartContainer {
-        max-height: 180px;
-      }
+    .sidebar-logo{font-size:30px;animation:pulse 3s ease infinite;}
+    @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+    .sidebar-info{flex:1;display:flex;flex-direction:column;gap:2px;}
+    .sidebar-app-name{color:#fff;font-size:16px;font-weight:700;}
+    .sidebar-user{color:#6b7280;font-size:12px;}
+    .sidebar-close{
+      background:rgba(255,255,255,.08);border:none;color:#aaa;
+      width:30px;height:30px;border-radius:8px;cursor:pointer;
+      font-size:13px;display:flex;align-items:center;justify-content:center;
+      margin:0;padding:0;min-width:unset;transition:background .2s;
     }
-    /* Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 10000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    .sidebar-close:hover{background:rgba(255,255,255,.18);color:white;}
+
+    .sidebar-nav{
+      flex:1;overflow-y:auto;padding:14px 10px;
+      scrollbar-width:none;
     }
-    .modal-container {
-      background: white;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      padding: 20px;
+    .sidebar-nav::-webkit-scrollbar{display:none;}
+
+    .nav-label-group{
+      color:#374151;font-size:10px;font-weight:700;
+      letter-spacing:1.5px;text-transform:uppercase;
+      padding:8px 10px 5px;margin-top:6px;
     }
-    body.dark-mode .modal-container {
-      background: #16213e;
-      color: #eee;
+
+    .nav-item{
+      display:flex;align-items:center;gap:11px;
+      padding:11px 13px;border-radius:12px;
+      text-decoration:none;color:#6b7280;
+      font-size:14px;font-weight:500;
+      margin-bottom:3px;
+      transition:all .25s cubic-bezier(.4,0,.2,1);
+      position:relative;overflow:hidden;
     }
-    .user-card {
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 12px;
-      transition: all 0.2s;
+    .nav-item::before{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,rgba(102,126,234,.15),rgba(118,75,162,.15));
+      opacity:0;transition:opacity .25s;border-radius:12px;
     }
-    body.dark-mode .user-card {
-      border-color: #333;
+    .nav-item:hover{color:#e2e8f0;}
+    .nav-item:hover::before{opacity:1;}
+    .nav-item.active{
+      background:linear-gradient(135deg,#667eea,#764ba2);
+      color:#fff;
+      box-shadow:0 4px 15px rgba(102,126,234,.35);
+      transform:translateX(-2px);
     }
-    .user-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    .nav-item.active::before{opacity:0;}
+    .ni{font-size:17px;width:22px;text-align:center;flex-shrink:0;}
+    .nl{flex:1;}
+    .na{font-size:17px;opacity:.35;transition:transform .2s;}
+    .nav-item.active .na{opacity:1;transform:translateX(-3px);}
+
+    .sidebar-footer{
+      padding:14px 10px;
+      border-top:1px solid rgba(255,255,255,.07);
+      display:flex;flex-direction:column;gap:7px;
     }
-    .role-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: bold;
+    .theme-btn{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.1);
+      color:#6b7280;border-radius:10px;
+      padding:10px 14px;font-size:13px;cursor:pointer;
+      width:100%;text-align:right;font-family:inherit;
+      transition:all .2s;margin:0;
     }
-    .role-admin {
-      background: #e74c3c;
-      color: white;
+    .theme-btn:hover{background:rgba(255,255,255,.12);color:#fff;transform:none;}
+    .logout-btn{
+      background:rgba(231,76,60,.12);
+      border:1px solid rgba(231,76,60,.25);
+      color:#e74c3c;border-radius:10px;
+      padding:10px 14px;font-size:13px;cursor:pointer;
+      width:100%;text-align:right;font-family:inherit;
+      transition:all .2s;margin:0;
     }
-    .role-staff {
-      background: #3498db;
-      color: white;
+    .logout-btn:hover{background:#e74c3c;color:white;transform:none;}
+
+    /* MAIN WRAP */
+    .main-wrap{
+      margin-right:272px;min-height:100vh;
+      transition:margin-right .35s;
+      display:flex;flex-direction:column;
     }
+    @media(max-width:768px){.main-wrap{margin-right:0;}}
+
+    /* TOPBAR */
+    .topbar{
+      background:white;padding:13px 18px;
+      display:flex;align-items:center;gap:13px;
+      box-shadow:0 1px 10px rgba(0,0,0,.06);
+      position:sticky;top:0;z-index:100;
+      border-bottom:1px solid #eef2f7;
+    }
+    body.dark-mode .topbar{background:#16213e;border-bottom-color:#2a3550;}
+
+    .burger{
+      background:none;border:none;cursor:pointer;
+      padding:6px;width:36px;height:36px;
+      display:none;flex-direction:column;
+      justify-content:space-between;align-items:center;
+      border-radius:8px;transition:background .2s;
+      margin:0;
+    }
+    @media(max-width:768px){.burger{display:flex;}}
+    .burger span{display:block;width:21px;height:2.5px;background:#2c3e50;border-radius:3px;transition:all .3s;}
+    body.dark-mode .burger span{background:#eee;}
+    .burger:hover{background:rgba(0,0,0,.05);}
+
+    .page-ttl{flex:1;font-size:16px;font-weight:600;color:#1e2139;}
+    body.dark-mode .page-ttl{color:#eee;}
+    .topbar-user{font-size:13px;color:#888;}
+    @media(max-width:480px){.topbar-user{display:none;}}
+
+    /* CONTENT */
+    .content-area{padding:20px;flex:1;}
+    @media(max-width:768px){.content-area{padding:14px;}}
+
+    .content-section{display:none;animation:fadeIn .3s ease;}
+    .content-section.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+
+    .sec-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;}
+    .sec-head span{font-size:24px;}
+    .sec-head h2{font-size:19px;font-weight:700;color:#1e2139;}
+    body.dark-mode .sec-head h2{color:#eee;}
+
+    /* CARD */
+    .card{
+      background:white;border-radius:16px;padding:20px;
+      box-shadow:0 2px 12px rgba(0,0,0,.06);
+      transition:all .3s;
+    }
+    body.dark-mode .card{background:#16213e;color:#eee;box-shadow:0 2px 12px rgba(0,0,0,.3);}
+
+    /* COUNTER */
+    .cnt-row{
+      display:flex;align-items:center;justify-content:center;
+      gap:16px;margin:12px 0 18px;direction:ltr;
+    }
+    .cnt-btn{
+      width:48px;height:48px;border-radius:14px;border:none;
+      font-size:24px;font-weight:700;cursor:pointer;
+      transition:all .2s;
+      display:flex;align-items:center;justify-content:center;
+      margin:0;padding:0;
+    }
+    .cnt-btn.minus{background:#fee2e2;color:#e74c3c;}
+    .cnt-btn.minus:hover{background:#e74c3c;color:white;transform:scale(1.05);}
+    .cnt-btn.plus{background:#d1fae5;color:#10b981;}
+    .cnt-btn.plus:hover{background:#10b981;color:white;transform:scale(1.05);}
+    .cnt-inp{
+      width:80px!important;height:48px;text-align:center;
+      font-size:22px;font-weight:700;border-radius:12px;
+      border:2px solid #e8ecf0;background:#f8fafc;
+      color:#1e2139;font-family:inherit;
+    }
+    body.dark-mode .cnt-inp{background:#0f1020;border-color:#2a3550;color:#eee;}
+
+    .date-inp{
+      display:block;margin:6px auto 16px;text-align:center;
+      font-size:15px;padding:10px 16px;font-weight:600;
+      width:200px!important;border-radius:12px;
+      border:2px solid #e8ecf0;font-family:inherit;color:#2c3e50;
+    }
+    body.dark-mode .date-inp{background:#0f1020;border-color:#2a3550;color:#eee;}
+
+    .save-btn{
+      width:100%;padding:14px;
+      background:linear-gradient(135deg,#667eea,#764ba2);
+      color:white;border:none;border-radius:14px;
+      font-size:16px;font-weight:600;cursor:pointer;
+      font-family:inherit;transition:all .2s;
+      box-shadow:0 4px 15px rgba(102,126,234,.3);
+      display:block;margin-top:12px;
+    }
+    .save-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(102,126,234,.4);}
+
+    #statusMsg{margin-top:10px;font-weight:bold;text-align:center;}
+
+    /* FORMS */
+    label{display:block;margin-top:12px;font-weight:600;font-size:13px;color:#555;}
+    body.dark-mode label{color:#aaa;}
+    input,select{
+      width:100%;padding:10px 14px;margin-top:5px;
+      border-radius:10px;border:2px solid #e8ecf0;
+      font-size:15px;font-family:inherit;
+      transition:border-color .2s;background:white;color:#2c3e50;
+    }
+    input:focus,select:focus{outline:none;border-color:#667eea;}
+    body.dark-mode input,body.dark-mode select{background:#0f1020;color:#eee;border-color:#2a3550;}
+
+    /* BUTTONS */
+    button{
+      display:block;width:100%;margin-top:12px;padding:11px;
+      background:#3498db;color:white;border:none;
+      border-radius:10px;font-size:15px;cursor:pointer;
+      font-family:inherit;transition:all .2s;
+    }
+    button:hover{background:#2980b9;transform:translateY(-1px);}
+    .button-group{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+    .button-group button{flex:1;width:auto;margin-top:0;font-size:13px;padding:10px 8px;}
+    .btn-excel{background:#1d6f42!important;}
+    .btn-pdf{background:#e74c3c!important;}
+
+    .sel-wrap{background:#f8fafc;padding:14px;border-radius:12px;margin-bottom:14px;}
+    body.dark-mode .sel-wrap{background:#0f1020;}
+
+    .chart-btns{display:flex;gap:8px;justify-content:center;margin:14px 0;flex-wrap:wrap;}
+    .chart-btn{
+      flex:none;width:auto;padding:8px 18px;margin:0;
+      font-size:13px;background:#f0f4f8;color:#2c3e50;border-radius:20px;
+    }
+    body.dark-mode .chart-btn{background:#2a3550;color:#eee;}
+    .chart-btn:hover{background:#667eea;color:white;transform:none;}
+
+    /* TABLES */
+    table{width:100%;border-collapse:collapse;margin-top:14px;overflow-x:auto;display:block;}
+    th{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:12px 10px;font-size:13px;font-weight:600;}
+    td{padding:10px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:13px;}
+    body.dark-mode td{border-bottom-color:#2a3550;}
+    .total-row td{font-weight:bold;background:#eaf4fb;}
+    body.dark-mode .total-row td{background:#1a2f4a;}
+
+    /* ADMIN */
+    .admin-panel{background:#fff9f9!important;}
+    body.dark-mode .admin-panel{background:#1a1025!important;}
+
+    /* DARK */
+    body.dark-mode{background:#0f1020;color:#eee;}
+    body.dark-mode h2{color:#eee;}
+
+    /* SPINNER */
+    .spinner{
+      width:50px;height:50px;
+      border:5px solid #f3f3f3;
+      border-top:5px solid #667eea;
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+    canvas{max-width:100%;height:auto;}
+    #weeklyChart,#monthlyChart{max-height:200px!important;height:200px!important;width:100%!important;}
+    #weeklyChartContainer,#monthlyChartContainer{max-height:220px;margin:10px 0;}
+    @media(max-width:768px){
+      #weeklyChart,#monthlyChart{max-height:160px!important;height:160px!important;}
+      #weeklyChartContainer,#monthlyChartContainer{max-height:180px;}
+    }
+
+    /* MODAL */
+    .modal-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.5);
+      z-index:10000;display:flex;justify-content:center;align-items:center;
+      backdrop-filter:blur(4px);
+    }
+    .modal-container{
+      background:white;border-radius:20px;width:90%;max-width:600px;
+      max-height:80vh;overflow-y:auto;padding:24px;
+      animation:slideUp .3s ease;
+    }
+    body.dark-mode .modal-container{background:#16213e;color:#eee;}
+    .user-card{border:1px solid #e8ecf0;border-radius:14px;padding:16px;margin-bottom:12px;transition:all .2s;}
+    body.dark-mode .user-card{border-color:#2a3550;}
+    .user-card:hover{box-shadow:0 4px 15px rgba(0,0,0,.1);}
+    .role-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:bold;}
+    .role-admin{background:#fee2e2;color:#e74c3c;}
+    .role-staff{background:#dbeafe;color:#3498db;}
   </style>
 
   <script>
-    // QR Code Generator
-    document.addEventListener("DOMContentLoaded", function() {
-      const generateBtn = document.getElementById("generateQrBtn");
-      const qrDisplay = document.getElementById("qrCodeDisplay");
-      const qrcodeDiv = document.getElementById("qrcode");
-      const downloadBtn = document.getElementById("downloadQrBtn");
-      let qrCreated = false;
-      
-      if (generateBtn && qrDisplay) {
-        generateBtn.addEventListener("click", function() {
-          if (qrDisplay.style.display === "block") {
-            qrDisplay.style.display = "none";
-            generateBtn.innerHTML = "🔲 پیشاندانی QR Code";
-            generateBtn.style.background = "#27ae60";
+    // SIDEBAR
+    function openSidebar(){
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('sidebarOverlay').classList.add('active');
+      document.body.style.overflow='hidden';
+    }
+    function closeSidebar(){
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('active');
+      document.body.style.overflow='';
+    }
+
+    const pageTitles={
+      saveSection:'📝 تۆمارکردنی نەخۆش',
+      dailySection:'📅 ئاماری ڕۆژانە',
+      weeklySection:'📆 ئاماری هەفتانە',
+      monthlySection:'🗓️ ئاماری مانگانە',
+      adminSectionPage:'👑 بەڕێوەبردن',
+      searchSectionPage:'🔍 گەڕان',
+      qrSectionPage:'📱 QR Code',
+      backupSectionPage:'💾 بەک‌ئەپ'
+    };
+
+    window.showSection=function(sectionId,el){
+      document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active'));
+      const t=document.getElementById(sectionId);
+      if(t) t.classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+      if(el) el.classList.add('active');
+      const ttl=document.getElementById('pageTitle');
+      if(ttl&&pageTitles[sectionId]) ttl.textContent=pageTitles[sectionId];
+      if(window.innerWidth<=768) closeSidebar();
+    };
+
+    // QR
+    document.addEventListener("DOMContentLoaded",function(){
+      const generateBtn=document.getElementById("generateQrBtn");
+      const qrDisplay=document.getElementById("qrCodeDisplay");
+      const qrcodeDiv=document.getElementById("qrcode");
+      const downloadBtn=document.getElementById("downloadQrBtn");
+      let qrCreated=false;
+      if(generateBtn&&qrDisplay){
+        generateBtn.addEventListener("click",function(){
+          if(qrDisplay.style.display==="block"){
+            qrDisplay.style.display="none";
+            generateBtn.innerHTML="🔲 پیشاندانی QR Code";
+            generateBtn.style.background="#27ae60";
           } else {
-            if (!qrCreated) {
-              const currentUrl = window.location.href;
-              if (typeof QRCode !== 'undefined') {
-                new QRCode(qrcodeDiv, {
-                  text: currentUrl,
-                  width: 200,
-                  height: 200,
-                  colorDark: "#2c3e50",
-                  colorLight: "#ffffff",
-                  correctLevel: QRCode.CorrectLevel.H
-                });
+            if(!qrCreated){
+              const url=window.location.href;
+              if(typeof QRCode!=='undefined'){
+                new QRCode(qrcodeDiv,{text:url,width:200,height:200,colorDark:"#2c3e50",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});
               } else {
-                qrcodeDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}" alt="QR Code" style="width:200px; height:200px;">`;
+                qrcodeDiv.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}" style="width:200px;height:200px;">`;
               }
-              qrCreated = true;
+              qrCreated=true;
             }
-            qrDisplay.style.display = "block";
-            generateBtn.innerHTML = "❌ شاردنەوەی QR Code";
-            generateBtn.style.background = "#e74c3c";
+            qrDisplay.style.display="block";
+            generateBtn.innerHTML="❌ شاردنەوەی QR Code";
+            generateBtn.style.background="#e74c3c";
           }
         });
       }
-      
-      if (downloadBtn) {
-        downloadBtn.addEventListener("click", function() {
-          const qrImg = qrcodeDiv.querySelector("img");
-          if (qrImg) {
-            const link = document.createElement("a");
-            link.download = "clinic-qrcode.png";
-            link.href = qrImg.src;
-            link.click();
-          } else {
-            const canvas = qrcodeDiv.querySelector("canvas");
-            if (canvas) {
-              const link = document.createElement("a");
-              link.download = "clinic-qrcode.png";
-              link.href = canvas.toDataURL();
-              link.click();
-            } else {
-              alert("تکایە یەکەم جار QR Code پیشان بدە");
-            }
-          }
+      if(downloadBtn){
+        downloadBtn.addEventListener("click",function(){
+          const qrImg=qrcodeDiv.querySelector("img");
+          if(qrImg){const l=document.createElement("a");l.download="clinic-qrcode.png";l.href=qrImg.src;l.click();}
+          else{const c=qrcodeDiv.querySelector("canvas");if(c){const l=document.createElement("a");l.download="clinic-qrcode.png";l.href=c.toDataURL();l.click();}else alert("تکایە یەکەم جار QR Code پیشان بدە");}
         });
       }
     });
   </script>
   <script type="module" src="app.js"></script>
+
+  <!-- Sync sidebar with auth state -->
+  <script type="module">
+    // Sync user name to sidebar
+    const uObs=new MutationObserver(()=>{
+      const name=document.getElementById('currentUserName')?.textContent;
+      const sn=document.getElementById('sidebarUserName');
+      if(sn&&name) sn.textContent=name;
+    });
+    const uEl=document.getElementById('currentUserName');
+    if(uEl) uObs.observe(uEl,{childList:true,subtree:true,characterData:true});
+
+    // Show admin nav items when admin section becomes visible
+    const aObs=new MutationObserver(()=>{
+      const a=document.getElementById('adminSection');
+      if(a&&a.style.display!=='none'){
+        ['adminNavLabel','adminNavItem','searchNavItem','qrNavItem','backupNavItem'].forEach(id=>{
+          const el=document.getElementById(id);
+          if(el) el.style.display='';
+        });
+      }
+    });
+    const aEl=document.getElementById('adminSection');
+    if(aEl) aObs.observe(aEl,{attributes:true,attributeFilter:['style']});
+
+    // Patch theme toggle button text
+    const origT=window.toggleTheme;
+    window.toggleTheme=function(){
+      if(origT) origT();
+      const btn=document.querySelector('.theme-btn');
+      if(btn){const d=document.body.classList.contains('dark-mode');btn.textContent=d?'☀️ Light Mode':'🌙 Dark Mode';}
+    };
+  </script>
 </body>
 </html>
