@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>سیستەمی کلینیک - Clinic Management System</title>
+  <title>سیستەمی کلینیک</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -14,317 +14,272 @@
 <body>
 
   <!-- Loading Spinner -->
-  <div id="loadingSpinner" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+  <div id="loadingSpinner">
     <div class="spinner"></div>
   </div>
 
-  <!-- شاشەی چوونەژوورەوە -->
+  <!-- ============ LOGIN PAGE ============ -->
   <div id="loginPage">
-    <div class="card login-card">
-      <h1>🏥 چوونە ژوورەوە</h1>
-      <label>ناوی کارمەند:</label>
-      <input type="text" id="loginEmail" placeholder="نموونە: naza" onkeydown="if(event.key === 'Enter') document.getElementById('loginPassword').focus();">
-      <label>پاسوۆرد:</label>
-      <input type="password" id="loginPassword" placeholder="******" onkeydown="if(event.key === 'Enter') window.login();">
-      <button id="btnLogin">چوونەژوورەوە</button>
-      <p id="loginError"></p>
+    <div class="login-card">
+      <div class="login-logo">🏥</div>
+      <h1>سیستەمی کلینیک</h1>
+      <p class="login-sub">تکایە بچۆ ژوورەوە بۆ بەردەوامبوون</p>
+      <div class="login-form">
+        <label>ناوی کارمەند</label>
+        <div class="input-wrap">
+          <span class="input-icon">👤</span>
+          <input type="text" id="loginEmail" placeholder="نموونە: naza" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus();">
+        </div>
+        <label>پاسوۆرد</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="loginPassword" placeholder="••••••" onkeydown="if(event.key==='Enter') window.login();">
+        </div>
+        <button id="btnLogin" class="login-btn">چوونەژوورەوە</button>
+        <p id="loginError"></p>
+      </div>
     </div>
   </div>
 
-  <!-- شاشەی سەرەکی (داشبۆرد) -->
+  <!-- ============ DASHBOARD ============ -->
   <div id="dashboard" style="display:none;">
-    <div class="topbar">
-      <h1>📊 ئاماری نەخۆشان</h1>
-      <div class="topbar-buttons">
-        <button id="themeToggle" class="theme-btn">🌙</button>
-        <span id="currentUserName"></span>
-        <button class="logout-btn" id="btnLogout">دەرچوون</button>
-      </div>
-    </div>
 
-    <!-- بەشی بەڕێوەبەر -->
-    <section class="card admin-panel" id="adminSection" style="display:none; border: 2px solid #e74c3c;">
-      <h2>👑 بەڕێوەبردن</h2>
-      <button id="userManagementBtn" style="background:#9b59b6; margin-bottom:10px;">👥 بەڕێوەبردنی بەکارهێنەران</button>
-      <button id="toggleAdminBtn" style="background:#2c3e50; margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
-      
-      <div id="adminFormWrapper" style="display:none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-        <label>ناوی کارمەند:</label>
-        <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند بێ بۆشایی">
-        <label>پاسوۆرد:</label>
-        <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
-        <button id="btnCreateStaff" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
-        <p id="createStaffMsg"></p>
-      </div>
-    </section>
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-    <!-- بەشی گەڕان (تەنها بۆ ئەدمین) -->
-    <section class="card" id="searchSection" style="display:none;">
-      <h2>🔍 گەڕان بە پێی کارمەند</h2>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <select id="staffSearchSelect" style="width: 100%; padding: 12px; font-size: 16px; border-radius: 8px;">
+    <!-- Sidebar Menu -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🏥</div>
+        <div>
+          <div class="sidebar-title">سیستەمی کلینیک</div>
+          <div class="sidebar-user" id="sidebarUserName"></div>
+        </div>
+      </div>
+      <ul class="sidebar-nav">
+        <li><a href="#" class="nav-item active" onclick="navigateTo('secEntry'); return false;"><span class="nav-icon">📝</span> تۆمارکردنی نەخۆش</a></li>
+        <li><a href="#" class="nav-item" onclick="navigateTo('secDaily'); return false;"><span class="nav-icon">📅</span> ئاماری ڕۆژانە</a></li>
+        <li><a href="#" class="nav-item" onclick="navigateTo('secWeekly'); return false;"><span class="nav-icon">📆</span> ئاماری هەفتانە</a></li>
+        <li><a href="#" class="nav-item" onclick="navigateTo('secMonthly'); return false;"><span class="nav-icon">🗓️</span> ئاماری مانگانە</a></li>
+        <li class="admin-only" style="display:none;"><a href="#" class="nav-item" onclick="navigateTo('adminSection'); return false;"><span class="nav-icon">👑</span> بەڕێوەبردن</a></li>
+        <li class="admin-only" style="display:none;"><a href="#" class="nav-item" onclick="navigateTo('searchSection'); return false;"><span class="nav-icon">🔍</span> گەڕانی کارمەند</a></li>
+        <li class="admin-only" style="display:none;"><a href="#" class="nav-item" onclick="navigateTo('qrCodeSection'); return false;"><span class="nav-icon">📱</span> QR Code</a></li>
+        <li class="admin-only" style="display:none;"><a href="#" class="nav-item" onclick="navigateTo('backupSection'); return false;"><span class="nav-icon">💾</span> بەک‌ئەپ</a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="theme-toggle-btn">🌙 دەگۆڕینی شێواز</button>
+        <button class="logout-btn" id="btnLogout">🚪 دەرچوون</button>
+      </div>
+    </nav>
+
+    <!-- Top Header Bar -->
+    <header class="app-header">
+      <button class="hamburger" id="hamburgerBtn" onclick="openSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+      <h1 class="app-title" id="pageTitle">تۆمارکردنی نەخۆش</h1>
+      <div class="header-right">
+        <span class="user-chip" id="currentUserName"></span>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content">
+
+      <!-- تۆمارکردنی نەخۆش -->
+      <section class="card page-section active" id="secEntry">
+        <h2>📝 تۆمارکردنی نەخۆش</h2>
+
+        <label>🧑 ژمارەی نەخۆشی گەورە</label>
+        <div class="counter-wrapper">
+          <button type="button" onclick="window.changeCount('patientCountAdult', -1)" class="btn-minus">−</button>
+          <input type="number" id="patientCountAdult" value="0" min="0">
+          <button type="button" onclick="window.changeCount('patientCountAdult', 1)" class="btn-plus">+</button>
+        </div>
+
+        <label>🧒 ژمارەی نەخۆشی منال</label>
+        <div class="counter-wrapper">
+          <button type="button" onclick="window.changeCount('patientCountChild', -1)" class="btn-minus">−</button>
+          <input type="number" id="patientCountChild" value="0" min="0">
+          <button type="button" onclick="window.changeCount('patientCountChild', 1)" class="btn-plus">+</button>
+        </div>
+
+        <label>📅 ڕێکەوت</label>
+        <input type="date" id="entryDate" class="date-input">
+        <button id="btnSaveEntry">💾 پاشکەوتکردن</button>
+        <p id="statusMsg"></p>
+      </section>
+
+      <!-- ئاماری ڕۆژانە -->
+      <section class="card page-section" id="secDaily" style="display:none;">
+        <h2>📅 ئاماری ڕۆژانە</h2>
+        <label>ڕێکەوت هەڵبژێرە</label>
+        <input type="date" id="dailyFilterDate" class="date-input">
+        <div class="button-group">
+          <button id="btnLoadDaily">👁️ پیشاندان</button>
+          <button id="btnExportDailyExcel" class="btn-excel">📊 Excel</button>
+          <button id="btnExportDailyPDF" class="btn-pdf">📄 PDF</button>
+        </div>
+        <div id="dailyOutput" style="margin-top:15px; overflow-x:auto;"></div>
+      </section>
+
+      <!-- ئاماری هەفتانە -->
+      <section class="card page-section" id="secWeekly" style="display:none;">
+        <h2>📆 ئاماری هەفتانە</h2>
+        <div class="week-selector-box">
+          <select id="weekSelector" onchange="window.selectWeekFromDropdown()"></select>
+          <div id="weekDateRangeLabel"></div>
+        </div>
+        <div class="button-group">
+          <button id="btnLoadWeekly">👁️ پیشاندان</button>
+          <button id="btnExportWeeklyExcel" class="btn-excel">📊 Excel</button>
+          <button id="btnExportWeeklyPDF" class="btn-pdf">📄 PDF</button>
+        </div>
+        <div class="chart-type-group">
+          <button id="chartTypeBar">📊 Bar</button>
+          <button id="chartTypeLine">📈 Line</button>
+          <button id="chartTypePie">🥧 Pie</button>
+        </div>
+        <div id="weeklyOutput" style="overflow-x:auto;"></div>
+        <div id="weeklyChartContainer" style="margin-top:20px; display:none;">
+          <canvas id="weeklyChart" height="250"></canvas>
+        </div>
+      </section>
+
+      <!-- ئاماری مانگانە -->
+      <section class="card page-section" id="secMonthly" style="display:none;">
+        <h2>🗓️ ئاماری مانگانە</h2>
+        <div class="month-selector-box">
+          <select id="monthSelector" onchange="window.selectMonth()"></select>
+        </div>
+        <div class="button-group">
+          <button id="btnLoadMonthly">👁️ پیشاندان</button>
+          <button id="btnExportMonthlyExcel" class="btn-excel">📊 Excel</button>
+          <button id="btnExportMonthlyPDF" class="btn-pdf">📄 PDF</button>
+        </div>
+        <div id="monthlyOutput" style="overflow-x:auto;"></div>
+        <div id="monthlyChartContainer" style="margin-top:20px; display:none;">
+          <canvas id="monthlyChart" height="250"></canvas>
+        </div>
+      </section>
+
+      <!-- بەڕێوەبردن (Admin) -->
+      <section class="card page-section admin-panel" id="adminSection" style="display:none;">
+        <h2>👑 بەڕێوەبردن</h2>
+        <button id="userManagementBtn" style="background:#9b59b6; margin-bottom:10px;">👥 بەڕێوەبردنی بەکارهێنەران</button>
+        <button id="toggleAdminBtn" style="background:#2c3e50; margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
+        <div id="adminFormWrapper" style="display:none; margin-top:15px; padding-top:15px; border-top:1px solid var(--border);">
+          <label>ناوی کارمەند</label>
+          <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند بێ بۆشایی">
+          <label>پاسوۆرد</label>
+          <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
+          <button id="btnCreateStaff" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
+          <p id="createStaffMsg"></p>
+        </div>
+      </section>
+
+      <!-- گەڕانی کارمەند (Admin) -->
+      <section class="card page-section" id="searchSection" style="display:none;">
+        <h2>🔍 گەڕان بە پێی کارمەند</h2>
+        <select id="staffSearchSelect">
           <option value="">-- هەڵبژێرە کارمەندێک --</option>
         </select>
-        <p style="font-size: 12px; color: #666;">💡 کارمەندێک هەڵبژێرە، داتاکانی نیشان دەدرێت (تۆمارە سفرەکان نیشان نادرێن)</p>
-      </div>
-      <div id="searchOutput" style="margin-top: 15px; overflow-x: auto;"></div>
-    </section>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:8px;">💡 کارمەندێک هەڵبژێرە، داتاکانی نیشان دەدرێت</p>
+        <div id="searchOutput" style="margin-top:15px; overflow-x:auto;"></div>
+      </section>
 
-    <!-- بەشی داخڵکردنی داتا -->
-    <section class="card" style="text-align: center;">
-      <h2>📝 تۆمارکردنی نەخۆش</h2>
-      
-      <label style="margin-top: 15px;">🧑 ژمارەی نەخۆشی گەورە:</label>
-      <div class="counter-wrapper">
-        <button type="button" onclick="window.changeCount('patientCountAdult', -1)" style="background-color: #e74c3c;">−</button>
-        <input type="number" id="patientCountAdult" value="0" min="0">
-        <button type="button" onclick="window.changeCount('patientCountAdult', 1)" style="background-color: #2ecc71;">+</button>
-      </div>
+      <!-- QR Code (Admin) -->
+      <section class="card page-section" id="qrCodeSection" style="display:none;">
+        <h2>📱 QR Code</h2>
+        <button id="generateQrBtn" style="background:#27ae60;">🔲 پیشاندانی QR Code</button>
+        <div id="qrCodeDisplay" style="text-align:center; margin-top:20px; display:none;">
+          <div id="qrcode"></div>
+          <p style="margin-top:10px; font-size:12px; color:var(--text-muted);">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
+          <button id="downloadQrBtn" style="background:#3498db; width:auto; display:inline-block; margin-top:10px; padding:10px 24px;">📥 دابەزاندنی وێنە</button>
+        </div>
+      </section>
 
-      <label style="margin-top: 5px;">🧒 ژمارەی نەخۆشی منال:</label>
-      <div class="counter-wrapper">
-        <button type="button" onclick="window.changeCount('patientCountChild', -1)" style="background-color: #e74c3c;">−</button>
-        <input type="number" id="patientCountChild" value="0" min="0">
-        <button type="button" onclick="window.changeCount('patientCountChild', 1)" style="background-color: #2ecc71;">+</button>
-      </div>
+      <!-- بەک‌ئەپ (Admin) -->
+      <section class="card page-section" id="backupSection" style="display:none;">
+        <h2>💾 بەک‌ئەپ</h2>
+        <div class="button-group">
+          <button id="backupBtn" style="background:#27ae60 !important;">📥 دابەزاندنی بەک‌ئەپ</button>
+          <button id="restoreBtn" style="background:#e67e22 !important;">📤 بەرجەستەکردنەوە</button>
+        </div>
+        <input type="file" id="restoreFile" style="display:none;" accept=".json">
+        <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
+      </section>
 
-      <label>📅 ڕێکەوت:</label>
-      <input type="date" id="entryDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; border-radius: 8px;">
-      
-      <button id="btnSaveEntry" style="width: 100%;">💾 پاشکەوتکردن</button>
-      <p id="statusMsg"></p>
-    </section>
+    </main>
 
-    <!-- بەشی ئاماری ڕۆژانە -->
-    <section class="card" style="text-align: center;">
-      <h2>📅 ئاماری ڕۆژانە</h2>
-      <label>ڕێکەوت هەڵبژێرە:</label>
-      <input type="date" id="dailyFilterDate" style="text-align: center; font-size: 1em; padding: 8px; font-weight: bold; width: 180px !important; display: block; margin: 5px auto 15px auto; border-radius: 8px;">
-      
-      <div class="button-group">
-        <button id="btnLoadDaily">👁️ پیشاندان</button>
-        <button id="btnExportDailyExcel" class="btn-excel">📊 Excel</button>
-        <button id="btnExportDailyPDF" class="btn-pdf">📄 PDF</button>
-      </div>
-      <div id="dailyOutput" style="margin-top: 15px; overflow-x: auto;"></div>
-    </section>
+    <!-- Bottom Nav Bar -->
+    <nav class="bottom-nav">
+      <button class="bottom-nav-item active" onclick="navigateTo('secEntry')">
+        <span>📝</span><small>تۆمار</small>
+      </button>
+      <button class="bottom-nav-item" onclick="navigateTo('secDaily')">
+        <span>📅</span><small>ڕۆژانە</small>
+      </button>
+      <button class="bottom-nav-item" onclick="navigateTo('secWeekly')">
+        <span>📆</span><small>هەفتانە</small>
+      </button>
+      <button class="bottom-nav-item" onclick="navigateTo('secMonthly')">
+        <span>🗓️</span><small>مانگانە</small>
+      </button>
+      <button class="bottom-nav-item" onclick="openSidebar()">
+        <span>☰</span><small>زیاتر</small>
+      </button>
+    </nav>
 
-    <!-- بەشی ئاماری هەفتانە -->
-    <section class="card">
-      <h2 style="text-align: center;">📆 ئاماری هەفتانە</h2>
-      
-      <div class="week-selector-box">
-          <select id="weekSelector" onchange="window.selectWeekFromDropdown()" style="width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; font-weight: bold; text-align: center;">
-          </select>
-          <div id="weekDateRangeLabel" style="font-size: 0.9em; color: #555; text-align: center;"></div>
-      </div>
-
-      <div class="button-group">
-        <button id="btnLoadWeekly">👁️ پیشاندان</button>
-        <button id="btnExportWeeklyExcel" class="btn-excel">📊 Excel</button>
-        <button id="btnExportWeeklyPDF" class="btn-pdf">📄 PDF</button>
-      </div>
-      
-      <div class="chart-type-group">
-        <button id="chartTypeBar">📊 Bar</button>
-        <button id="chartTypeLine">📈 Line</button>
-        <button id="chartTypePie">🥧 Pie</button>
-      </div>
-      
-      <div id="weeklyOutput" style="overflow-x: auto;"></div>
-      <div id="weeklyChartContainer" style="margin-top: 20px; display: none;">
-        <canvas id="weeklyChart" height="250"></canvas>
-      </div>
-    </section>
-
-    <!-- بەشی ئاماری مانگانە -->
-    <section class="card">
-      <h2 style="text-align: center;">📅 ئاماری مانگانە</h2>
-      
-      <div class="month-selector-box">
-          <select id="monthSelector" onchange="window.selectMonth()" style="width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; font-weight: bold; text-align: center;">
-          </select>
-      </div>
-
-      <div class="button-group">
-        <button id="btnLoadMonthly">👁️ پیشاندان</button>
-        <button id="btnExportMonthlyExcel" class="btn-excel">📊 Excel</button>
-        <button id="btnExportMonthlyPDF" class="btn-pdf">📄 PDF</button>
-      </div>
-      
-      <div id="monthlyOutput" style="overflow-x: auto;"></div>
-      <div id="monthlyChartContainer" style="margin-top: 20px; display: none;">
-        <canvas id="monthlyChart" height="250"></canvas>
-      </div>
-    </section>
-
-    <!-- بەشی QR Code Generator (تەنها بۆ ئەدمین) -->
-    <section class="card" id="qrCodeSection" style="display:none;">
-      <h2 style="text-align: center;">📱 QR Code بۆ چوونەژوورەوە</h2>
-      <button id="generateQrBtn" style="background: #27ae60;">🔲 پیشاندانی QR Code</button>
-      <div id="qrCodeDisplay" style="text-align: center; margin-top: 20px; display: none;">
-        <div id="qrcode"></div>
-        <p style="margin-top: 10px; font-size: 12px; color: #666;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
-        <button id="downloadQrBtn" style="background: #3498db; width: auto; display: inline-block; margin-top: 10px;">📥 دابەزاندنی وێنە</button>
-      </div>
-    </section>
-
-    <!-- بەشی بەک‌ئەپ (تەنها بۆ ئەدمین) -->
-    <section class="card" id="backupSection" style="display:none;">
-      <h2 style="text-align: center;">💾 بەک‌ئەپ (Backup)</h2>
-      <div class="button-group">
-        <button id="backupBtn" class="btn-excel" style="background:#27ae60 !important;">📥 دابەزاندنی بەک‌ئەپ</button>
-        <button id="restoreBtn" class="btn-pdf" style="background:#e67e22 !important;">📤 بەرجەستەکردنەوە</button>
-      </div>
-      <input type="file" id="restoreFile" style="display:none;" accept=".json">
-      <p style="font-size: 12px; color: #666; text-align: center; margin-top: 10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
-    </section>
   </div>
 
-  <style>
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .topbar-buttons {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      flex-wrap: wrap;
-    }
-    .theme-btn {
-      background: transparent;
-      border: 1px solid white;
-      width: auto;
-      padding: 5px 10px;
-      margin: 0;
-      font-size: 18px;
-    }
-    .theme-btn:hover {
-      background: rgba(255,255,255,0.2);
-    }
-    @media (max-width: 768px) {
-      .card {
-        margin: 10px;
-        padding: 15px;
-      }
-      button {
-        padding: 12px;
-        font-size: 14px;
-      }
-      table {
-        font-size: 12px;
-      }
-      th, td {
-        padding: 6px;
-      }
-      .button-group {
-        flex-wrap: wrap;
-      }
-      .button-group button {
-        flex: 1;
-        min-width: 80px;
-      }
-      .topbar {
-        flex-direction: column;
-        text-align: center;
-      }
-      .topbar-buttons {
-        justify-content: center;
-      }
-    }
-    #weeklyChart, #monthlyChart {
-      max-height: 200px !important;
-      height: 200px !important;
-      width: 100% !important;
-    }
-    #weeklyChartContainer, #monthlyChartContainer {
-      max-height: 220px;
-      margin: 10px 0;
-    }
-    @media (max-width: 768px) {
-      #weeklyChart, #monthlyChart {
-        max-height: 160px !important;
-        height: 160px !important;
-      }
-      #weeklyChartContainer, #monthlyChartContainer {
-        max-height: 180px;
-      }
-    }
-    /* Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 10000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-container {
-      background: white;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      padding: 20px;
-    }
-    body.dark-mode .modal-container {
-      background: #16213e;
-      color: #eee;
-    }
-    .user-card {
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 12px;
-      transition: all 0.2s;
-    }
-    body.dark-mode .user-card {
-      border-color: #333;
-    }
-    .user-card:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    .role-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: bold;
-    }
-    .role-admin {
-      background: #e74c3c;
-      color: white;
-    }
-    .role-staff {
-      background: #3498db;
-      color: white;
-    }
-  </style>
-
   <script>
-    // QR Code Generator
+    const pageTitles = {
+      secEntry: 'تۆمارکردنی نەخۆش',
+      secDaily: 'ئاماری ڕۆژانە',
+      secWeekly: 'ئاماری هەفتانە',
+      secMonthly: 'ئاماری مانگانە',
+      adminSection: 'بەڕێوەبردن',
+      searchSection: 'گەڕانی کارمەند',
+      qrCodeSection: 'QR Code',
+      backupSection: 'بەک‌ئەپ'
+    };
+
+    function navigateTo(sectionId) {
+      document.querySelectorAll('.page-section').forEach(s => s.style.display = 'none');
+      const target = document.getElementById(sectionId);
+      if (target) target.style.display = 'block';
+      document.getElementById('pageTitle').textContent = pageTitles[sectionId] || '';
+
+      // bottom nav active state
+      const bottomBtns = document.querySelectorAll('.bottom-nav-item');
+      const map = ['secEntry','secDaily','secWeekly','secMonthly'];
+      bottomBtns.forEach((b, i) => {
+        b.classList.toggle('active', map[i] === sectionId);
+      });
+
+      closeSidebar();
+    }
+
+    function openSidebar() {
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('sidebarOverlay').classList.add('show');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('show');
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
+      // QR Code
       const generateBtn = document.getElementById("generateQrBtn");
       const qrDisplay = document.getElementById("qrCodeDisplay");
       const qrcodeDiv = document.getElementById("qrcode");
       const downloadBtn = document.getElementById("downloadQrBtn");
       let qrCreated = false;
-      
-      if (generateBtn && qrDisplay) {
+
+      if (generateBtn) {
         generateBtn.addEventListener("click", function() {
           if (qrDisplay.style.display === "block") {
             qrDisplay.style.display = "none";
@@ -332,18 +287,11 @@
             generateBtn.style.background = "#27ae60";
           } else {
             if (!qrCreated) {
-              const currentUrl = window.location.href;
+              const url = window.location.href;
               if (typeof QRCode !== 'undefined') {
-                new QRCode(qrcodeDiv, {
-                  text: currentUrl,
-                  width: 200,
-                  height: 200,
-                  colorDark: "#2c3e50",
-                  colorLight: "#ffffff",
-                  correctLevel: QRCode.CorrectLevel.H
-                });
+                new QRCode(qrcodeDiv, { text: url, width: 200, height: 200, colorDark: "#1A1A2E", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
               } else {
-                qrcodeDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}" alt="QR Code" style="width:200px; height:200px;">`;
+                qrcodeDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}" style="width:200px;height:200px;">`;
               }
               qrCreated = true;
             }
@@ -353,27 +301,24 @@
           }
         });
       }
-      
+
       if (downloadBtn) {
         downloadBtn.addEventListener("click", function() {
-          const qrImg = qrcodeDiv.querySelector("img");
-          if (qrImg) {
-            const link = document.createElement("a");
-            link.download = "clinic-qrcode.png";
-            link.href = qrImg.src;
-            link.click();
-          } else {
-            const canvas = qrcodeDiv.querySelector("canvas");
-            if (canvas) {
-              const link = document.createElement("a");
-              link.download = "clinic-qrcode.png";
-              link.href = canvas.toDataURL();
-              link.click();
-            } else {
-              alert("تکایە یەکەم جار QR Code پیشان بدە");
-            }
-          }
+          const img = qrcodeDiv.querySelector("img");
+          const canvas = qrcodeDiv.querySelector("canvas");
+          const a = document.createElement("a");
+          a.download = "clinic-qrcode.png";
+          a.href = img ? img.src : (canvas ? canvas.toDataURL() : '');
+          if (a.href) a.click();
         });
+      }
+
+      // Sync sidebar username
+      const userEl = document.getElementById('currentUserName');
+      if (userEl) {
+        new MutationObserver(() => {
+          document.getElementById('sidebarUserName').textContent = userEl.textContent;
+        }).observe(userEl, { childList: true, subtree: true, characterData: true });
       }
     });
   </script>
