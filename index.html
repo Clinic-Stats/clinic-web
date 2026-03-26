@@ -380,12 +380,13 @@
     .theme-btn{
       background:rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.1);
-      color:#6b7280;border-radius:10px;
-      padding:10px 14px;font-size:13px;cursor:pointer;
+      color:#9ca3af;border-radius:10px;
+      padding:11px 14px;font-size:14px;cursor:pointer;
       width:100%;text-align:right;font-family:inherit;
       transition:all .2s;margin:0;
+      display:flex;align-items:center;gap:8px;
     }
-    .theme-btn:hover{background:rgba(255,255,255,.12);color:#fff;transform:none;}
+    .theme-btn:hover{background:rgba(255,255,255,.14);color:#fff;transform:none;}
     .logout-btn{
       background:rgba(231,76,60,.12);
       border:1px solid rgba(231,76,60,.25);
@@ -603,33 +604,32 @@
       gap: 8px;
     }
     .topbar-icon-btn {
-      background: none;
-      border: none;
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      font-size: 18px;
+      background: rgba(0,0,0,0.05);
+      border: 1.5px solid rgba(0,0,0,0.08);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      font-size: 20px;
       cursor: pointer;
-      display: flex;
+      display: flex !important;
       align-items: center;
       justify-content: center;
       margin: 0;
       padding: 0;
-      transition: background .2s;
+      transition: all .2s;
+      flex-shrink: 0;
     }
-    .topbar-icon-btn:hover { background: rgba(0,0,0,.07); transform: none; }
-    body.dark-mode .topbar-icon-btn:hover { background: rgba(255,255,255,.1); }
-    .theme-topbar { color: #f39c12; }
-    .logout-topbar { color: #e74c3c; }
+    .topbar-icon-btn:hover { background: rgba(0,0,0,.1); transform: scale(1.05); box-shadow: none; }
+    body.dark-mode .topbar-icon-btn { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }
+    body.dark-mode .topbar-icon-btn:hover { background: rgba(255,255,255,.15); }
+    .theme-topbar { color: #e67e22; }
 
-    /* FIX: burger always shows on mobile, on right side */
+    /* FIX: burger always shows on mobile */
     .burger { display: none; }
     @media(max-width:768px) {
       .burger { display: flex !important; }
       .topbar-user { display: none; }
     }
-    /* theme button always visible in topbar on all sizes */
-    .topbar-icon-btn { display: flex !important; }
 
     /* FIX: Dark mode for topbar and sidebar fully */
     body.dark-mode .topbar { background: #12122a !important; border-bottom-color: #1e2040 !important; }
@@ -722,7 +722,27 @@
   <!-- Clinic fixes: theme, admin nav, save validation -->
   <script>
 
-    // ── THEME: works by watching body class changes directly ─────────────────
+    // ── THEME: self-contained toggle (doesn't depend on app.js export) ─────────
+    function doToggleTheme() {
+      const isDark = document.body.classList.contains('dark-mode');
+      const newTheme = isDark ? 'light' : 'dark';
+
+      // If app.js has exposed toggleTheme on window, use it (it handles currentTheme variable)
+      if (typeof window.toggleTheme === 'function') {
+        window.toggleTheme();
+        return; // syncThemeUI will fire via MutationObserver on body.class change
+      }
+
+      // Fallback: do it ourselves (mirrors app.js applyTheme logic exactly)
+      if (newTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+      localStorage.setItem('theme', newTheme);
+      syncThemeUI();
+    }
+
     function syncThemeUI() {
       const isDark = document.body.classList.contains('dark-mode');
       const sideBtn = document.getElementById('themeSidebarBtn');
@@ -731,26 +751,21 @@
       if (topBtn)  topBtn.textContent  = isDark ? '☀️' : '🌙';
     }
 
-    // Watch body classList for dark-mode changes (most reliable approach)
+    // Watch body classList — syncs icons whenever app.js also changes theme
     new MutationObserver(syncThemeUI)
       .observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-    // Topbar theme button — directly calls app.js toggleTheme after DOM ready
+    // Wire buttons on DOMContentLoaded
     document.addEventListener('DOMContentLoaded', function() {
-      syncThemeUI(); // sync icon to saved theme on load
+      // Apply saved theme immediately (before app.js loads)
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') document.body.classList.add('dark-mode');
+      syncThemeUI();
 
-      const topBtn = document.getElementById('themeToggle');
-      if (topBtn) {
-        topBtn.onclick = function() {
-          if (typeof window.toggleTheme === 'function') window.toggleTheme();
-        };
-      }
+      // #themeToggle is wired by app.js automatically (it looks for this id)
+      // We only need to wire themeSidebarBtn ourselves
       const sideBtn = document.getElementById('themeSidebarBtn');
-      if (sideBtn) {
-        sideBtn.onclick = function() {
-          if (typeof window.toggleTheme === 'function') window.toggleTheme();
-        };
-      }
+      if (sideBtn) sideBtn.addEventListener('click', doToggleTheme);
     });
 
     // ── ADMIN NAV: watch adminSection style reliably ─────────────────────────
