@@ -82,8 +82,8 @@
       </nav>
 
       <div class="sidebar-footer">
-        <button id="themeSidebarBtn" class="theme-btn" onclick="window.toggleTheme()">🌙 Dark Mode</button>
         <button class="logout-btn" id="btnLogout">🚪 دەرچوون</button>
+        <button id="themeSidebarBtn" class="theme-btn" onclick="window.toggleTheme()">🌙 Dark Mode</button>
       </div>
     </aside>
 
@@ -98,7 +98,6 @@
         <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
         <div class="topbar-right">
           <button class="topbar-icon-btn theme-topbar" id="themeToggle" onclick="window.toggleTheme()">🌙</button>
-          <button class="topbar-icon-btn logout-topbar" id="btnLogoutMobile" onclick="window.logout()">🚪</button>
           <span id="currentUserName" class="topbar-user"></span>
         </div>
       </div>
@@ -629,9 +628,8 @@
       .burger { display: flex !important; }
       .topbar-user { display: none; }
     }
-    @media(min-width:769px) {
-      .topbar-icon-btn { display: none; } /* hide mobile icons on desktop */
-    }
+    /* theme button always visible in topbar on all sizes */
+    .topbar-icon-btn { display: flex !important; }
 
     /* FIX: Dark mode for topbar and sidebar fully */
     body.dark-mode .topbar { background: #12122a !important; border-bottom-color: #1e2040 !important; }
