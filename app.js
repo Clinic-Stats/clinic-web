@@ -1820,4 +1820,25 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if(document.getElementById("btnLoadMonthly")) document.getElementById("btnLoadMonthly").addEventListener("click", window.loadMonthly);
     if(document.getElementById("btnExportMonthlyExcel")) document.getElementById("btnExportMonthlyExcel").addEventListener("click", window.exportMonthlyExcel);
-    if(document.getElementById("btnExportMonthlyPDF")) document.getElementById("b
+    if(document.getElementById("btnExportMonthlyPDF")) document.getElementById("btnExportMonthlyPDF").addEventListener("click", window.exportMonthlyPDF);
+    if(document.getElementById("monthSelector")) document.getElementById("monthSelector").addEventListener("change", window.selectMonth);
+    
+    if(document.getElementById("staffSearchSelect")) document.getElementById("staffSearchSelect").addEventListener("change", window.searchByStaff);
+    
+    if(document.getElementById("backupBtn")) document.getElementById("backupBtn").addEventListener("click", window.backupData);
+    if(document.getElementById("restoreBtn")) document.getElementById("restoreBtn").addEventListener("click", window.restoreBackup);
+    if(document.getElementById("restoreFile")) document.getElementById("restoreFile").addEventListener("change", window.handleRestore);
+    
+    if(document.getElementById("chartTypeBar")) document.getElementById("chartTypeBar").addEventListener("click", () => window.switchChartType('bar'));
+    if(document.getElementById("chartTypeLine")) document.getElementById("chartTypeLine").addEventListener("click", () => window.switchChartType('line'));
+    if(document.getElementById("chartTypePie")) document.getElementById("chartTypePie").addEventListener("click", () => window.switchChartType('pie'));
+    
+    if(document.getElementById("userManagementBtn")) {
+      document.getElementById("userManagementBtn").addEventListener("click", window.showUserManagement);
+    }
+    
+    document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = true);
+    setTimeout(() => {
+      document.querySelectorAll("button[onclick*='changeCount']").forEach(b => b.disabled = false);
+    }, 800);
+});
