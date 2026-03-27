@@ -824,7 +824,8 @@
         if (!dateInput) return;
         const today = new Date();
         today.setHours(0,0,0,0);
-        const chosen = new Date(dateInput.value);
+        const parts = dateInput.value.split('-');
+        const chosen = new Date(parts[0], parts[1]-1, parts[2]);
         if (dateInput.value && chosen > today) {
           if (!warn) {
             warn = document.createElement('p');
@@ -876,7 +877,8 @@
           const dateInput = document.getElementById('entryDate');
           if (dateInput && dateInput.value) {
             const today = new Date(); today.setHours(0,0,0,0);
-            const chosen = new Date(dateInput.value);
+            const p = dateInput.value.split('-');
+            const chosen = new Date(p[0], p[1]-1, p[2]);
             if (chosen > today) {
               e.stopImmediatePropagation();
               let msg = document.getElementById('statusMsg');
