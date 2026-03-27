@@ -645,7 +645,7 @@ window.deleteUserAccount = async function(email) {
   showLoading();
   try {
     await deleteDoc(doc(db, "users", email));
-    alert(`✅ بەکارهێنەر ${email} سڕایەوە!`);
+    alert(`✅ بەکارهێنەر ${email} لە سیستەم سڕایەوە!\n\n⚠️ تێبینی گرنگ: بۆ ئەوەی ئەم کەسە نەتوانێت دووبارە چوونەژوورەوە بکات، پێویستە لە Firebase Console Disable بکەیت.`);
     window.showUserManagement();
   } catch (error) {
     alert('❌ هەڵە: ' + error.message);
@@ -1007,7 +1007,12 @@ window.editEntry = async function(docId, currentAdult, currentChild) {
 
   showLoading();
   try {
-    await setDoc(doc(db, "entries", docId), { countAdult: adultVal, countChild: childVal }, { merge: true });
+    await setDoc(doc(db, "entries", docId), { 
+      countAdult: adultVal, 
+      countChild: childVal,
+      lastEditedBy: currentUser.email,
+      lastEditedAt: Timestamp.now()
+    }, { merge: true });
     alert("✅ تۆمارەکە نوێ کرایەوە!");
     window.loadDaily();
   } catch(e) {
