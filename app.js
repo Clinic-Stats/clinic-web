@@ -208,14 +208,26 @@ function addUserManagementButton() {
 // ============================================
 async function loadStaffList() {
   try {
-    const usersSnap = await getDocs(collection(db, "users"));
-    allStaffList = [];
-    usersSnap.forEach(d => {
-      const staffName = d.id.split('@')[0];
-      allStaffList.push(staffName);
+    // ناوی کارمەندەکان لە entries دەردەکەین — پێویستی بە users collection نییە
+    const entriesSnap = await getDocs(collection(db, "entries"));
+    const staffSet = new Set();
+    entriesSnap.forEach(d => {
+      const s = d.data().staff;
+      if (s) staffSet.add(s);
     });
-    allStaffList.sort();
-    
+
+    // هەروەها ئەوانەی هێشتا entries یان نییە لە users زیاد بکە
+    try {
+      const usersSnap = await getDocs(collection(db, "users"));
+      usersSnap.forEach(d => {
+        staffSet.add(d.id.split('@')[0]);
+      });
+    } catch(e2) {
+      // ئەگەر users بلۆک کرا، تەنها entries بەکار بهێنە
+    }
+
+    allStaffList = Array.from(staffSet).sort();
+
     const select = document.getElementById("staffSearchSelect");
     if (select) {
       select.innerHTML = '<option value="">-- هەموو کارمەندەکان --</option>';
