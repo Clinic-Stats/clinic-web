@@ -124,7 +124,51 @@ function getLocalISODate(dateObj) {
 }
 
 // ============================================
-// AUTH STATE
+// LOAD STAFF LIST (FIXED)
+// ============================================
+async function loadStaffList() {
+  try {
+    const staffSet = new Set();
+    
+    // 1. Get staff from entries collection
+    const entriesSnap = await getDocs(collection(db, "entries"));
+    entriesSnap.forEach(d => {
+      const s = d.data().staff;
+      if (s) staffSet.add(s);
+    });
+    
+    // 2. Also get staff from users collection
+    try {
+      const usersSnap = await getDocs(collection(db, "users"));
+      usersSnap.forEach(d => {
+        const email = d.id;
+        const staffName = email.split('@')[0];
+        staffSet.add(staffName);
+      });
+    } catch(e2) {
+      console.log("Could not load users collection:", e2);
+    }
+    
+    allStaffList = Array.from(staffSet).sort();
+    
+    const select = document.getElementById("staffSearchSelect");
+    if (select) {
+      select.innerHTML = '<option value="">-- هەموو کارمەندەکان --</option>';
+      allStaffList.forEach(staff => {
+        const option = document.createElement("option");
+        option.value = staff;
+        option.textContent = staff;
+        select.appendChild(option);
+      });
+      console.log("Staff list loaded:", allStaffList.length, "staff members");
+    }
+  } catch (e) {
+    console.error("Error loading staff list:", e);
+  }
+}
+
+// ============================================
+// AUTH STATE (FIXED - load staff for all users)
 // ============================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
@@ -135,6 +179,8 @@ onAuthStateChanged(auth, async (user) => {
     let userEmail = user.email.toLowerCase();
     let displayName = userEmail.split('@')[0];
     document.getElementById("currentUserName").textContent = "👤 " + displayName;
+    const sidebarUser = document.getElementById("sidebarUserName");
+    if (sidebarUser) sidebarUser.textContent = displayName;
 
     isCurrentUserAdmin = false;
     try {
@@ -151,13 +197,34 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById("searchSection").style.display = "block";
       document.getElementById("backupSection").style.display = "block";
       document.getElementById("qrCodeSection").style.display = "block";
+      
+      // Show admin nav items
+      const adminNavItems = ['adminNavLabel', 'adminNavItem', 'searchNavItem', 'qrNavItem', 'backupNavItem'];
+      adminNavItems.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "";
+      });
+      
       await loadStaffList();
       addUserManagementButton();
     } else {
       document.getElementById("adminSection").style.display = "none";
-      document.getElementById("searchSection").style.display = "none";
+      document.getElementById("searchSection").style.display = "block"; // Show search for regular users
       document.getElementById("backupSection").style.display = "none";
       document.getElementById("qrCodeSection").style.display = "none";
+      
+      // Hide admin nav items
+      const adminNavItems = ['adminNavLabel', 'adminNavItem', 'qrNavItem', 'backupNavItem'];
+      adminNavItems.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+      });
+      // Show search nav for regular users
+      const searchNav = document.getElementById('searchNavItem');
+      if (searchNav) searchNav.style.display = "";
+      
+      // Load staff list for regular users (only themselves)
+      await loadStaffListForRegularUser();
     }
 
     setTodayDate();
@@ -184,6 +251,27 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// Load staff list for regular users (only themselves)
+async function loadStaffListForRegularUser() {
+  if (!currentUser) return;
+  
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const select = document.getElementById("staffSearchSelect");
+  if (select) {
+    select.innerHTML = '<option value="">-- هەڵبژێرە --</option>';
+    const option = document.createElement("option");
+    option.value = staffName;
+    option.textContent = staffName;
+    select.appendChild(option);
+    select.value = staffName;
+    
+    // Auto search for regular user
+    setTimeout(() => {
+      window.searchByStaff();
+    }, 500);
+  }
+}
+
 // Add User Management Button
 function addUserManagementButton() {
   const existingBtn = document.getElementById('userManagementBtn');
@@ -200,46 +288,6 @@ function addUserManagementButton() {
     userMgmtBtn.style.marginBottom = '10px';
     userMgmtBtn.onclick = window.showUserManagement;
     adminSection.insertBefore(userMgmtBtn, adminSection.firstChild);
-  }
-}
-
-// ============================================
-// LOAD STAFF LIST
-// ============================================
-async function loadStaffList() {
-  try {
-    // ناوی کارمەندەکان لە entries دەردەکەین — پێویستی بە users collection نییە
-    const entriesSnap = await getDocs(collection(db, "entries"));
-    const staffSet = new Set();
-    entriesSnap.forEach(d => {
-      const s = d.data().staff;
-      if (s) staffSet.add(s);
-    });
-
-    // هەروەها ئەوانەی هێشتا entries یان نییە لە users زیاد بکە
-    try {
-      const usersSnap = await getDocs(collection(db, "users"));
-      usersSnap.forEach(d => {
-        staffSet.add(d.id.split('@')[0]);
-      });
-    } catch(e2) {
-      // ئەگەر users بلۆک کرا، تەنها entries بەکار بهێنە
-    }
-
-    allStaffList = Array.from(staffSet).sort();
-
-    const select = document.getElementById("staffSearchSelect");
-    if (select) {
-      select.innerHTML = '<option value="">-- هەموو کارمەندەکان --</option>';
-      allStaffList.forEach(staff => {
-        const option = document.createElement("option");
-        option.value = staff;
-        option.textContent = staff;
-        select.appendChild(option);
-      });
-    }
-  } catch (e) {
-    console.error("Error loading staff list:", e);
   }
 }
 
@@ -407,7 +455,7 @@ window.showAddUserForm = function() {
 };
 
 // ============================================
-// CREATE NEW USER — بە secondary app بۆ ئەوەی session ی ئەدمین نەگۆڕێت
+// CREATE NEW USER
 // ============================================
 window.createNewUser = async function() {
   let email = document.getElementById('newUserEmail')?.value.trim();
@@ -436,14 +484,9 @@ window.createNewUser = async function() {
   showLoading();
   
   try {
-    // بەکارهێنانی secondaryAuth بۆ دروستکردنی ئەکاونتی نوێ
-    // ئەمە session ی ئەدمینەکە نادەگۆڕێت
     const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-    
-    // دوای دروستکردن، sign out بکە لە secondary app
     await secondaryAuth.signOut();
     
-    // زانیاری یوزەر بنووسە لە Firestore
     await setDoc(doc(db, "users", email), {
       role: role,
       createdAt: Timestamp.now()
@@ -562,13 +605,7 @@ window.showChangeEmailForm = function(oldEmail) {
   window.showModal('✉️ گۆڕینی ئیمەیڵ', formHtml);
 };
 
-// ============================================
-// UPDATE USER EMAIL — چارەسەرکراو: secondary app بەکارهاتووە
-// کێشەی کۆن: createUserWithEmailAndPassword لە primary auth دەکرا
-//              و ئەدمینەکە sign out دەبوو
-// چارەسەر: secondaryAuth بەکارهاتووە بۆ دروستکردنی ئەکاونتی نوێ
-//           بێ گۆڕینی session ی ئەدمین
-// ============================================
+// UPDATE USER EMAIL
 window.updateUserEmail = async function(oldEmail) {
   let newEmailInput = document.getElementById('newUserEmailAddress')?.value.trim();
   const newPassword = document.getElementById('newUserEmailPassword')?.value;
@@ -580,7 +617,6 @@ window.updateUserEmail = async function(oldEmail) {
     return;
   }
   
-  // ئۆتۆماتیکی @clinic.com زیاد بکە ئەگەر نەبوو
   let newEmail = newEmailInput;
   if (!newEmail.includes('@')) {
     newEmail = newEmail + '@clinic.com';
@@ -603,24 +639,17 @@ window.updateUserEmail = async function(oldEmail) {
   showLoading();
   
   try {
-    // زانیاری ئەکاونتە کۆنەکە بخوێنەوە
     const userDoc = await getDoc(doc(db, "users", oldEmail));
     const userRole = userDoc.exists() ? userDoc.data().role : 'staff';
     
-    // === چارەسەر: بەکارهێنانی secondaryAuth ===
-    // ئەمە ئەکاونتی نوێ دروست دەکات بێ گۆڕینی session ی ئەدمین
     await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
-    
-    // دوای دروستکردن، sign out بکە لە secondary app
     await secondaryAuth.signOut();
     
-    // زانیاری نوێ بنووسە لە Firestore
     await setDoc(doc(db, "users", newEmail), {
       role: userRole,
       createdAt: Timestamp.now()
     });
     
-    // ئەکاونتە کۆنەکە لە Firestore بسڕەوە
     await deleteDoc(doc(db, "users", oldEmail));
     
     msgEl.textContent = '✅ ئیمەیڵ گۆڕدرا! بەکارهێنەر دەبێت بە ئیمەیڵی نوێ بچێتە ژوورەوە';
@@ -632,7 +661,6 @@ window.updateUserEmail = async function(oldEmail) {
     }, 2000);
   } catch (error) {
     console.error('Error:', error);
-    // sign out بکە لە secondary app ئەگەر هەڵە ڕووی دا
     try { await secondaryAuth.signOut(); } catch(e) {}
     
     if (error.code === 'auth/email-already-in-use') {
@@ -648,7 +676,7 @@ window.updateUserEmail = async function(oldEmail) {
   }
 };
 
-// Delete User Account (Firestore only)
+// Delete User Account
 window.deleteUserAccount = async function(email) {
   if (!confirm(`⚠️ دڵنیایت لە سڕینەوەی بەکارهێنەر "${email}"؟\nئەم کردارە گەڕانەوەی نییە!`)) return;
   
@@ -679,9 +707,7 @@ window.toggleAdminForm = function() {
   }
 };
 
-// ============================================
-// CREATE STAFF — بە secondary app بۆ ئەوەی session ی ئەدمین نەگۆڕێت
-// ============================================
+// CREATE STAFF
 window.createStaff = async function () {
   let email = document.getElementById("newStaffEmail").value.trim().toLowerCase();
   const pass = document.getElementById("newStaffPassword").value;
@@ -702,7 +728,6 @@ window.createStaff = async function () {
   showLoading();
 
   try {
-    // بەکارهێنانی secondaryAuth بۆ ئەوەی ئەدمین sign out نەبێت
     await createUserWithEmailAndPassword(secondaryAuth, email, pass);
     await secondaryAuth.signOut();
     
@@ -775,7 +800,6 @@ async function checkDateSaved(dateVal) {
 // ============================================
 window.changeCount = async function(fieldId, amount) {
   if (amount > 0) {
-    // پشکنین: ئایا ڕێکەوت داهاتووە؟
     const dateVal = document.getElementById("entryDate").value;
     if (dateVal) {
       const parts = dateVal.split('-');
@@ -784,15 +808,11 @@ window.changeCount = async function(fieldId, amount) {
       today.setHours(0, 0, 0, 0);
 
       if (chosen > today) {
-        // پەیامی ئاگادارکردنەوە پیشان بدە
         const msg = document.getElementById("statusMsg");
         msg.textContent = "⛔ ناتوانیت بۆ ڕێکەوتی داهاتوو تۆمار بکەیت!";
         msg.style.color = "red";
         setTimeout(() => { if(msg.textContent.includes('داهاتوو')) msg.textContent = ""; }, 3000);
 
-        // دڵەڕاوکێ (shake) بکە دوگمەی +
-        const btn = document.querySelector(`button[onclick*="${fieldId}"][onclick*="+1"], button[onclick*="${fieldId}"][onclick*="1)"]`);
-        // بجوڵێنە بە ئینپوتەکە
         const input = document.getElementById(fieldId);
         if (input) {
           input.style.transition = "transform 0.1s";
@@ -811,7 +831,6 @@ window.changeCount = async function(fieldId, amount) {
       }
     }
 
-    // پشکنین: ئایا پێشتر تۆمار کراوە؟
     const alreadySaved = await checkDateSaved(dateVal);
     if (alreadySaved) {
       const msg = document.getElementById("statusMsg");
@@ -846,6 +865,13 @@ window.saveEntry = async function () {
     return;
   }
 
+  if (countAdult === 0 && countChild === 0) {
+    msg.textContent = "⚠️ تکایە داتا داخڵ بکە — ژمارەی نەخۆش سفرە!";
+    msg.style.color = "orange";
+    setTimeout(() => { msg.textContent = ""; }, 3000);
+    return;
+  }
+  
   const parts = dateVal.split('-');
   const chosen = new Date(parts[0], parts[1] - 1, parts[2]);
   const today = new Date();
@@ -854,13 +880,6 @@ window.saveEntry = async function () {
   if (chosen > today) {
     msg.textContent = "⚠️ ناتوانیت بۆ ڕێکەوتی داهاتوو تۆمار بکەیت!";
     msg.style.color = "red";
-    setTimeout(() => { msg.textContent = ""; }, 3000);
-    return;
-  }
-
-  if (countAdult === 0 && countChild === 0) {
-    msg.textContent = "⚠️ تکایە داتا داخڵ بکە — ژمارەی نەخۆش سفرە!";
-    msg.style.color = "orange";
     setTimeout(() => { msg.textContent = ""; }, 3000);
     return;
   }
@@ -945,14 +964,7 @@ window.loadDaily = async function () {
 
   const staffName = currentUser.email.toLowerCase().split('@')[0];
 
-  let html = `<table><thead><tr>
-    <th>کارمەند</th>
-    <th>🧑 گەورە</th>
-    <th>🧒 منال</th>
-    <th>کۆی گشتی</th>
-    <th>ڕێکەوت</th>
-    <th>کردارەکان</th>
-  </tr></thead><tbody>`;
+  let html = `§表格§<thead>§<th>کارمەند</th><th>🧑 گەورە</th><th>🧒 منال</th><th>کۆی گشتی</th><th>ڕێکەوت</th><th>کردارەکان</th></thead><tbody>`;
   let totalAdult = 0, totalChild = 0, totalAll = 0;
 
   snap.forEach(d => {
@@ -997,7 +1009,7 @@ window.loadDaily = async function () {
       <td>-</td>
     </tr>`;
   }
-  html += `</tbody></table>`;
+  html += `</tbody>§表格§`;
   output.innerHTML = html;
   hideLoading();
 };
@@ -1047,7 +1059,7 @@ window.deleteEntry = async function(docId) {
 };
 
 // ============================================
-// SEARCH BY STAFF
+// SEARCH BY STAFF (FIXED)
 // ============================================
 window.searchByStaff = async function() {
   const searchOutput = document.getElementById("searchOutput");
@@ -1058,8 +1070,10 @@ window.searchByStaff = async function() {
     return;
   }
 
-  // یوزەری ئاسایی تەنها داتای خۆی دەبینێت
+  // Get current user info
   const currentStaffName = currentUser.email.toLowerCase().split('@')[0];
+  
+  // Check if regular user is trying to view someone else
   if (!isCurrentUserAdmin && selectedStaff !== currentStaffName) {
     searchOutput.innerHTML = "⛔ تەنها دەتوانیت داتای خۆت ببینیت";
     return;
@@ -1089,32 +1103,28 @@ window.searchByStaff = async function() {
       const child = data.countChild ?? 0;
       const total = adult + child;
       
-      if (total > 0) {
-        entries.push({
-          id: d.id,
-          adult, child, total,
-          date: data.date.toDate(),
-          dateStr: data.date.toDate().toLocaleDateString("en-GB")
-        });
-      }
+      entries.push({
+        id: d.id,
+        adult, child, total,
+        date: data.date.toDate(),
+        dateStr: data.date.toDate().toLocaleDateString("en-GB")
+      });
     });
     
     entries.sort((a, b) => b.date - a.date);
     
-    if (entries.length === 0) {
-      searchOutput.innerHTML = `📭 هیچ تۆمارێکی ناسفر نییە بۆ کارمەند "${selectedStaff}"`;
-      hideLoading();
-      return;
-    }
-    
     let html = `<h3 style="margin-bottom:10px;">📋 تۆمارەکانی ${selectedStaff}</h3>`;
-    html += `<table><thead><tr>
-      <th>#</th>
-      <th>🧑 گەورە</th>
-      <th>🧒 منال</th>
-      <th>کۆی گشتی</th>
-      <th>📅 ڕێکەوت</th>
-    </tr></thead><tbody>`;
+    html += `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#3498db;color:white;">
+          <th style="padding:10px;">#</th>
+          <th style="padding:10px;">🧑 گەورە</th>
+          <th style="padding:10px;">🧒 منال</th>
+          <th style="padding:10px;">کۆی گشتی</th>
+          <th style="padding:10px;">📅 ڕێکەوت</th>
+        </tr>
+      </thead>
+      <tbody>`;
     
     let totalAdult = 0, totalChild = 0;
     let index = 1;
@@ -1122,23 +1132,23 @@ window.searchByStaff = async function() {
     for (const entry of entries) {
       totalAdult += entry.adult;
       totalChild += entry.child;
-      html += `<tr>
-        <td>${index++}</td>
-        <td>${entry.adult}</td>
-        <td>${entry.child}</td>
-        <td>${entry.total}</td>
-        <td>${entry.dateStr}</td>
+      html += `<tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;text-align:center;">${index++}</td>
+        <td style="padding:8px;text-align:center;">${entry.adult}</td>
+        <td style="padding:8px;text-align:center;">${entry.child}</td>
+        <td style="padding:8px;text-align:center;">${entry.total}</td>
+        <td style="padding:8px;text-align:center;">${entry.dateStr}</td>
       </tr>`;
     }
     
-    html += `<tr class="total-row">
-      <td>کۆی گشتی</td>
-      <td>${totalAdult}</td>
-      <td>${totalChild}</td>
-      <td>${totalAdult + totalChild}</td>
-      <td>-</td>
+    html += `<tr style="background:#eaf4fb;font-weight:bold;">
+      <td style="padding:8px;text-align:center;">کۆی گشتی</td>
+      <td style="padding:8px;text-align:center;">${totalAdult}</td>
+      <td style="padding:8px;text-align:center;">${totalChild}</td>
+      <td style="padding:8px;text-align:center;">${totalAdult + totalChild}</td>
+      <td style="padding:8px;text-align:center;">-</td>
     </tr>`;
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
     searchOutput.innerHTML = html;
     
   } catch (e) {
@@ -1222,7 +1232,7 @@ window.loadWeekly = async function () {
   
   snap.forEach(d => {
     const x = d.data();
-    if (x.year && x.year !== currentYear) return; // filter year in JS
+    if (x.year && x.year !== currentYear) return;
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
