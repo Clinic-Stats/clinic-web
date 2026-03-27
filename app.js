@@ -211,12 +211,10 @@ async function loadStaffList() {
     const usersSnap = await getDocs(collection(db, "users"));
     allStaffList = [];
     usersSnap.forEach(d => {
-      const userData = d.data();
-      if (userData.role === "staff") {
-        const staffName = d.id.split('@')[0];
-        allStaffList.push(staffName);
-      }
+      const staffName = d.id.split('@')[0];
+      allStaffList.push(staffName);
     });
+    allStaffList.sort();
     
     const select = document.getElementById("staffSearchSelect");
     if (select) {
@@ -1048,6 +1046,13 @@ window.searchByStaff = async function() {
     return;
   }
 
+  // یوزەری ئاسایی تەنها داتای خۆی دەبینێت
+  const currentStaffName = currentUser.email.toLowerCase().split('@')[0];
+  if (!isCurrentUserAdmin && selectedStaff !== currentStaffName) {
+    searchOutput.innerHTML = "⛔ تەنها دەتوانیت داتای خۆت ببینیت";
+    return;
+  }
+
   showLoading();
   searchOutput.innerHTML = "⏳ چاوەڕێ بکە... داتا دەهێنرێت";
   
@@ -1126,7 +1131,7 @@ window.searchByStaff = async function() {
     
   } catch (e) {
     console.error("Search error:", e);
-    searchOutput.innerHTML = `❌ هەڵە: ${e.message.includes("permissions") ? "مافی دەسترسیت نییە، تکایە دووبارە چوونەژوورەوە بکە" : e.message}`;
+    searchOutput.innerHTML = "❌ هەڵە: مافی دەسترسیت نییە، تکایە دووبارە چوونەژوورەوە بکە";
   } finally {
     hideLoading();
   }
