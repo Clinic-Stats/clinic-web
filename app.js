@@ -1126,7 +1126,7 @@ window.searchByStaff = async function() {
     
   } catch (e) {
     console.error("Search error:", e);
-    searchOutput.innerHTML = `❌ هەڵە لە گەڕاندا: ${e.message}`;
+    searchOutput.innerHTML = `❌ هەڵە: ${e.message.includes("permissions") ? "مافی دەسترسیت نییە، تکایە دووبارە چوونەژوورەوە بکە" : e.message}`;
   } finally {
     hideLoading();
   }
@@ -1173,14 +1173,23 @@ window.selectWeekFromDropdown = function() {
 async function fetchWeekly() {
   return getDocs(query(
     collection(db, "entries"),
-    where("weekNumber", "==", selectedWeekNumber),
-    where("year", "==", currentYear)
+    where("weekNumber", "==", selectedWeekNumber)
   ));
 }
 
 window.loadWeekly = async function () {
   showLoading();
-  const snap = await fetchWeekly();
+  let snap;
+  try {
+    snap = await fetchWeekly();
+  } catch(e) {
+    document.getElementById("weeklyOutput").innerHTML = 
+      e.message.includes("permission") 
+        ? "❌ مافی دەسترسیت نییە، تکایە دووبارە چوونەژوورەوە بکە" 
+        : "❌ هەڵە: " + e.message;
+    hideLoading();
+    return;
+  }
   const weeklyOutput = document.getElementById("weeklyOutput");
   const chartContainer = document.getElementById("weeklyChartContainer");
 
@@ -1196,6 +1205,7 @@ window.loadWeekly = async function () {
   
   snap.forEach(d => {
     const x = d.data();
+    if (x.year && x.year !== currentYear) return; // filter year in JS
     if (!isCurrentUserAdmin && x.staff !== staffName) return;
     const adult = x.countAdult ?? x.count ?? 0;
     const child = x.countChild ?? 0;
