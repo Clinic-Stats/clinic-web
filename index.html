@@ -190,7 +190,7 @@
         <section class="content-section" id="adminSectionPage">
           <div class="sec-head"><span>👑</span><h2>بەڕێوەبردن</h2></div>
           <div class="card admin-panel" id="adminSection" style="border:2px solid #e74c3c;">
-            <button id="userManagementBtn" style="background:#9b59b6;margin-bottom:10px;">👥 بەڕێوەبردنی بەکارهێنەران</button>
+            <button id="userManagementBtn" style="background:#9b59b6;margin-bottom:10px;" onclick="window.showUserManagement && window.showUserManagement()">👥 بەڕێوەبردنی بەکارهێنەران</button>
             <button id="toggleAdminBtn" style="background:#2c3e50;margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
             <div id="adminFormWrapper" style="display:none;margin-top:15px;padding-top:15px;border-top:1px solid #ccc;">
               <label>ناوی کارمەند:</label>
@@ -233,8 +233,8 @@
           <div class="sec-head"><span>💾</span><h2>بەک‌ئەپ (Backup)</h2></div>
           <div class="card" id="backupSection">
             <div class="button-group">
-              <button id="backupBtn" style="background:#27ae60!important;">📥 دابەزاندنی بەک‌ئەپ</button>
-              <button id="restoreBtn" style="background:#e67e22!important;">📤 بەرجەستەکردنەوە</button>
+              <button id="btnBackup" style="background:#27ae60!important;">📥 دابەزاندنی بەک‌ئەپ</button>
+              <button id="btnRestore" style="background:#e67e22!important;">📤 بەرجەستەکردنەوە</button>
             </div>
             <input type="file" id="restoreFile" style="display:none;" accept=".json">
             <p style="font-size:12px;color:#666;text-align:center;margin-top:10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>

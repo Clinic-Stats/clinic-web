@@ -186,9 +186,13 @@ onAuthStateChanged(auth, async (user) => {
 
 // Add User Management Button
 function addUserManagementButton() {
-  const adminSection = document.getElementById('adminSection');
   const existingBtn = document.getElementById('userManagementBtn');
-  if (adminSection && !existingBtn) {
+  if (existingBtn) {
+    existingBtn.onclick = window.showUserManagement;
+    return;
+  }
+  const adminSection = document.getElementById('adminSection');
+  if (adminSection) {
     const userMgmtBtn = document.createElement('button');
     userMgmtBtn.id = 'userManagementBtn';
     userMgmtBtn.innerHTML = '👥 بەڕێوەبردنی بەکارهێنەران';
