@@ -207,10 +207,11 @@
         <section class="content-section" id="searchSectionPage">
           <div class="sec-head"><span>🔍</span><h2>گەڕان بە پێی کارمەند</h2></div>
           <div class="card" id="searchSection">
-            <select id="staffSearchSelect" style="width:100%;padding:12px;font-size:16px;border-radius:8px;">
+            <select id="staffSearchSelect" onchange="window.searchByStaff && window.searchByStaff()" style="width:100%;padding:12px;font-size:16px;border-radius:8px;">
               <option value="">-- هەڵبژێرە کارمەندێک --</option>
             </select>
-            <p style="font-size:12px;color:#666;margin-top:8px;">💡 کارمەندێک هەڵبژێرە، داتاکانی نیشان دەدرێت</p>
+            <button id="btnSearchStaff" style="background:#3498db;margin-top:10px;">🔍 گەڕان</button>
+            <p style="font-size:12px;color:#666;margin-top:8px;">💡 کارمەندێک هەڵبژێرە یان دوگمەی گەڕان دابگرە</p>
             <div id="searchOutput" style="margin-top:15px;overflow-x:auto;"></div>
           </div>
         </section>
