@@ -435,12 +435,12 @@
     .topbar-right{display:flex;align-items:center;gap:8px;}
     .topbar-user{font-size:13px;color:#888;}
     @media(max-width:480px){.topbar-user{display:none;}}
-    /* موبایل: burger و dark mode هەردووکیان لای ڕاست (RTL دیر=ئەوەندەی دەردەکەوێت لای ڕاست) */
+    /* موبایل: burger لای چەپ، dark mode لای ڕاست، ناوی پەڕە ناوەڕاست */
     @media(max-width:768px){
-      .topbar{flex-direction:row-reverse;}
-      .topbar-right{order:0;}
-      .topbar-actions{order:1;}
-      .page-ttl{order:2;text-align:center;}
+      .topbar{flex-direction:row;}
+      .topbar-actions{order:1;margin-right:auto;}
+      .page-ttl{order:2;flex:1;text-align:center;}
+      .topbar-right{order:3;}
     }
 
     /* CONTENT */
