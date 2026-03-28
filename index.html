@@ -721,8 +721,31 @@
       if(downloadBtn){
         downloadBtn.addEventListener("click",function(){
           const qrImg=qrcodeDiv.querySelector("img");
-          if(qrImg){const l=document.createElement("a");l.download="clinic-qrcode.png";l.href=qrImg.src;l.click();}
-          else{const c=qrcodeDiv.querySelector("canvas");if(c){const l=document.createElement("a");l.download="clinic-qrcode.png";l.href=c.toDataURL();l.click();}else alert("تکایە یەکەم جار QR Code پیشان بدە");}
+          const c=qrcodeDiv.querySelector("canvas");
+
+          function saveBlob(blob){
+            const burl=URL.createObjectURL(blob);
+            const l=document.createElement("a");
+            l.href=burl;l.download="clinic-qrcode.png";
+            document.body.appendChild(l);l.click();
+            setTimeout(function(){document.body.removeChild(l);URL.revokeObjectURL(burl);},1000);
+          }
+
+          if(c){
+            // QRCode.js — canvas بەکارهێنراوە
+            c.toBlob(function(blob){if(blob)saveBlob(blob);},'image/png');
+          } else if(qrImg){
+            // API img — fetch بکە بە blob
+            fetch(qrImg.src)
+              .then(function(r){return r.blob();})
+              .then(function(blob){saveBlob(blob);})
+              .catch(function(){
+                // fallback: تازە پەنجەرە بکە
+                window.open(qrImg.src,"_blank");
+              });
+          } else {
+            alert("تکایە یەکەم جار QR Code پیشان بدە");
+          }
         });
       }
     });
