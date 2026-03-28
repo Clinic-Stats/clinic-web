@@ -90,14 +90,16 @@
     <!-- MAIN -->
     <div class="main-wrap">
       <div class="topbar">
-        <div class="topbar-right">
-          <button class="topbar-icon-btn theme-topbar" id="themeToggle">🌙</button>
+        <div class="topbar-actions">
           <button class="burger" onclick="openSidebar()">
             <span></span><span></span><span></span>
           </button>
         </div>
         <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
-        <span id="currentUserName" class="topbar-user"></span>
+        <div class="topbar-right">
+          <button class="topbar-icon-btn theme-topbar" id="themeToggle">🌙</button>
+          <span id="currentUserName" class="topbar-user"></span>
+        </div>
       </div>
 
       <div class="content-area">
@@ -429,8 +431,17 @@
 
     .page-ttl{flex:1;font-size:16px;font-weight:600;color:#1e2139;}
     body.dark-mode .page-ttl{color:#eee;}
+    .topbar-actions{display:flex;align-items:center;}
+    .topbar-right{display:flex;align-items:center;gap:8px;}
     .topbar-user{font-size:13px;color:#888;}
     @media(max-width:480px){.topbar-user{display:none;}}
+    /* موبایل: burger و dark mode هەردووکیان لای ڕاست (RTL دیر=ئەوەندەی دەردەکەوێت لای ڕاست) */
+    @media(max-width:768px){
+      .topbar{flex-direction:row-reverse;}
+      .topbar-right{order:0;}
+      .topbar-actions{order:1;}
+      .page-ttl{order:2;text-align:center;}
+    }
 
     /* CONTENT */
     .content-area{padding:20px;flex:1;}
@@ -592,11 +603,15 @@
     .topbar {
       justify-content: space-between;
     }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      order: -1; /* goes to RIGHT side in RTL */
+    }
     .topbar-right {
       display: flex;
       align-items: center;
       gap: 8px;
-      order: -1; /* لای راست در RTL */
     }
     .topbar-icon-btn {
       background: rgba(0,0,0,0.05);
