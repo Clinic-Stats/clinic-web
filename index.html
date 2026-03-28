@@ -90,16 +90,14 @@
     <!-- MAIN -->
     <div class="main-wrap">
       <div class="topbar">
-        <div class="topbar-actions">
+        <div class="topbar-right">
+          <button class="topbar-icon-btn theme-topbar" id="themeToggle">🌙</button>
           <button class="burger" onclick="openSidebar()">
             <span></span><span></span><span></span>
           </button>
         </div>
         <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
-        <div class="topbar-right">
-          <button class="topbar-icon-btn theme-topbar" id="themeToggle">🌙</button>
-          <span id="currentUserName" class="topbar-user"></span>
-        </div>
+        <span id="currentUserName" class="topbar-user"></span>
       </div>
 
       <div class="content-area">
@@ -416,7 +414,6 @@
     }
     body.dark-mode .topbar{background:#16213e;border-bottom-color:#2a3550;}
 
-    .topbar-actions{margin-left:auto;}
     .burger{
       background:none;border:none;cursor:pointer;
       padding:6px;width:36px;height:36px;
@@ -595,15 +592,11 @@
     .topbar {
       justify-content: space-between;
     }
-    .topbar-actions {
-      display: flex;
-      align-items: center;
-      order: -1; /* goes to RIGHT side in RTL */
-    }
     .topbar-right {
       display: flex;
       align-items: center;
       gap: 8px;
+      order: -1; /* لای راست در RTL */
     }
     .topbar-icon-btn {
       background: rgba(0,0,0,0.05);
