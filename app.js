@@ -165,6 +165,12 @@ onAuthStateChanged(auth, async (user) => {
     populateMonthDropdown();
     checkTodaySaved();
     applyTheme(currentTheme);
+
+    // Auto-navigate to patient registration section after login
+    if (typeof window.showSection === 'function') {
+      const saveNavItem = document.querySelector('[data-section="saveSection"]');
+      window.showSection('saveSection', saveNavItem);
+    }
     
     const outputIds = ["dailyOutput", "weeklyOutput", "monthlyOutput", "searchOutput"];
     outputIds.forEach(id => {
@@ -1855,6 +1861,7 @@ window.handleRestore = async function(event) {
 document.addEventListener("DOMContentLoaded", () => {
   if(document.getElementById("btnLogin")) document.getElementById("btnLogin").addEventListener("click", window.login);
   if(document.getElementById("btnLogout")) document.getElementById("btnLogout").addEventListener("click", window.logout);
+  if(document.getElementById("btnLogoutMobile")) document.getElementById("btnLogoutMobile").addEventListener("click", window.logout);
   if(document.getElementById("themeToggle")) document.getElementById("themeToggle").addEventListener("click", window.toggleTheme);
   
   if(document.getElementById("toggleAdminBtn")) document.getElementById("toggleAdminBtn").addEventListener("click", window.toggleAdminForm);

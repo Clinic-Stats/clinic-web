@@ -22,6 +22,7 @@
   <!-- LOGIN -->
   <div id="loginPage">
     <div class="login-card">
+      <p style="font-size:10px;color:#aaa;text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Developed by Karwan &nbsp;|&nbsp; 07507411341 &nbsp;/&nbsp; 07701261978</p>
       <div class="login-logo">🏥</div>
       <h1>سیستەمی کلینیک</h1>
       <p class="login-subtitle">چوونە ژوورەوە بە ئەکاونتەکەت</p>
@@ -99,6 +100,7 @@
         <div class="topbar-right">
           <button class="topbar-icon-btn theme-topbar" id="themeToggle">🌙</button>
           <span id="currentUserName" class="topbar-user"></span>
+          <button class="topbar-icon-btn topbar-logout-btn" id="btnLogoutMobile" title="Logout">🚪</button>
         </div>
       </div>
 
@@ -634,9 +636,10 @@
     body.dark-mode .topbar-icon-btn:hover { background: rgba(255,255,255,.15); }
     .theme-topbar { color: #e67e22; }
 
-    /* FIX: burger always shows on mobile */
-    .burger { display: none; }
+    .topbar-logout-btn { color: #e74c3c !important; display: none !important; }
     @media(max-width:768px) {
+      .topbar-logout-btn { display: flex !important; }
+    }
       .burger { display: flex !important; }
       .topbar-user { display: none; }
     }
