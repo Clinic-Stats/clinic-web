@@ -1173,15 +1173,33 @@ function getDateRangeOfWeek(weekNo, year) {
   return `[ لە ${formatDate(firstDay)} بۆ ${formatDate(lastDay)} ]`;
 }
 
+function getWeekDates(weekNo, year) {
+  let d = new Date(year, 0, 1);
+  let days = (weekNo - 1) * 7;
+  let dayOfWeek = d.getDay();
+  let offset = -dayOfWeek;
+  let firstDay = new Date(year, 0, d.getDate() + days + offset);
+  let lastDay = new Date(firstDay);
+  lastDay.setDate(firstDay.getDate() + 6);
+  const fmt = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+  return { start: fmt(firstDay), end: fmt(lastDay) };
+}
+
 function populateWeekDropdown() {
   const select = document.getElementById("weekSelector");
   if (!select) return;
   select.innerHTML = "";
   const currentWk = getWeekNumber(new Date());
   for (let i = 1; i <= 53; i++) {
+    const { start, end } = getWeekDates(i, currentYear);
     const option = document.createElement("option");
     option.value = i;
-    option.textContent = `هەفتەی ${i}`;
+    option.textContent = `هەفتەی ${i} - ${start} بۆ ${end}`;
     if (i === currentWk) option.selected = true;
     select.appendChild(option);
   }
