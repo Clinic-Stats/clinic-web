@@ -1161,31 +1161,31 @@ window.searchByStaff = async function() {
 // ============================================
 // WEEKLY STATS
 // ============================================
+function getMondayOfWeek(weekNo, year) {
+  // ڕێکەوتی دووشەممەی هەفتە بدۆزەرەوە — هەفتە لە دووشەممە دەستپێدەکات
+  const jan4 = new Date(year, 0, 4); // ٤ی جانواری هەمیشە لە هەفتەی ١دایە (ISO)
+  const jan4Day = (jan4.getDay() + 6) % 7; // دووشەممە=0 ... یەکشەممە=6
+  const firstMonday = new Date(year, 0, 4 - jan4Day);
+  const monday = new Date(firstMonday);
+  monday.setDate(firstMonday.getDate() + (weekNo - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { monday, sunday };
+}
+
 function getDateRangeOfWeek(weekNo, year) {
-  let d = new Date(year, 0, 1);
-  let days = (weekNo - 1) * 7;
-  let dayOfWeek = d.getDay(); 
-  let offset = -dayOfWeek;
-  let firstDay = new Date(year, 0, d.getDate() + days + offset);
-  let lastDay = new Date(firstDay);
-  lastDay.setDate(firstDay.getDate() + 6);
+  const { monday, sunday } = getMondayOfWeek(weekNo, year);
   const formatDate = (date) => date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear();
-  return `[ لە ${formatDate(firstDay)} بۆ ${formatDate(lastDay)} ]`;
+  return `[ لە ${formatDate(monday)} بۆ ${formatDate(sunday)} ]`;
 }
 
 function getWeekDates(weekNo, year) {
-  let d = new Date(year, 0, 1);
-  let days = (weekNo - 1) * 7;
-  let dayOfWeek = d.getDay();
-  let offset = -dayOfWeek;
-  let firstDay = new Date(year, 0, d.getDate() + days + offset);
-  let lastDay = new Date(firstDay);
-  lastDay.setDate(firstDay.getDate() + 6);
+  const { monday: firstDay, sunday: lastDay } = getMondayOfWeek(weekNo, year);
   const fmt = (date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${dd}`;
+    return `${dd}/${m}/${y}`;
   };
   return { start: fmt(firstDay), end: fmt(lastDay) };
 }
