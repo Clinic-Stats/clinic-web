@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, setDoc, deleteDoc, orderBy } 
+import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, setDoc, deleteDoc, enableIndexedDbPersistence, orderBy } 
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
@@ -27,7 +27,10 @@ const auth = getAuth(app);
 const secondaryApp = initializeApp(firebaseConfig, "secondary");
 const secondaryAuth = getAuth(secondaryApp);
 
-// Offline persistence disabled (multi-tab env)
+// Enable offline persistence
+enableIndexedDbPersistence(db).catch(err => {
+  console.log("Offline error:", err.code);
+});
 
 let currentUser = null;
 let chartInstance = null;
@@ -944,9 +947,6 @@ async function fetchDailyForCurrentUser() {
   ));
 }
 
-// ============================================
-// DAILY STATS - دڵنیابە لەوەی کە یوزەری ئاسایی تەنها داتای خۆی دەبینێت
-// ============================================
 window.loadDaily = async function () {
   showLoading();
   const snap = await fetchDailyForCurrentUser();
@@ -958,7 +958,7 @@ window.loadDaily = async function () {
     return;
   }
 
-  const staffName = currentUser ? currentUser.email.toLowerCase().split('@')[0] : "";
+  const staffName = currentUser.email.toLowerCase().split('@')[0];
 
   let html = `<table><thead><tr>
     <th>کارمەند</th>
@@ -974,7 +974,6 @@ window.loadDaily = async function () {
     const data = d.data();
     const docId = d.id;
 
-    // پشکنین: ئەگەر یوزەری ئاسایی بێت، تەنها داتای خۆی پیشان بدە
     if (!isCurrentUserAdmin && data.staff !== staffName) return;
 
     const adult = data.countAdult ?? data.count ?? 0;
@@ -983,10 +982,9 @@ window.loadDaily = async function () {
 
     totalAdult += adult;
     totalChild += child;
-    totalAll += total;
+    totalAll   += total;
     
     let actionButtons = "";
-    // یوزەری ئاسایی دەتوانێت تەنها داتای خۆی دەستکاری بکات
     if (isCurrentUserAdmin || data.staff === staffName) {
       actionButtons = `
         <button onclick="editEntry('${docId}', ${adult}, ${child})" style="width:auto;padding:4px 8px;margin:2px;font-size:11px;">✏️</button>
@@ -1019,50 +1017,28 @@ window.loadDaily = async function () {
   hideLoading();
 };
 
-window.editEntry = function(docId, currentAdult, currentChild) {
-  const isDark = document.body.classList.contains('dark-mode');
-  const bg = isDark ? '#0f0f1f' : '#fff';
-  const fg = isDark ? '#eee' : '#333';
-  const formHtml = `
-    <div style="direction:rtl;">
-      <label style="display:block;margin-bottom:6px;font-weight:bold;">🧑 ژمارەی نوێی نەخۆشی گەورە:</label>
-      <input type="number" id="editAdultInput" value="${currentAdult}" min="0"
-        style="width:100%;padding:10px;margin-bottom:14px;border-radius:8px;border:1px solid #ccc;font-size:16px;background:${bg};color:${fg};">
-      <label style="display:block;margin-bottom:6px;font-weight:bold;">🧒 ژمارەی نوێی نەخۆشی منال:</label>
-      <input type="number" id="editChildInput" value="${currentChild}" min="0"
-        style="width:100%;padding:10px;margin-bottom:20px;border-radius:8px;border:1px solid #ccc;font-size:16px;background:${bg};color:${fg};">
-      <p id="editEntryMsg" style="color:red;margin-bottom:8px;font-size:13px;min-height:18px;"></p>
-      <div style="display:flex;gap:10px;">
-        <button onclick="window.saveEditEntry('${docId}')"
-          style="background:#27ae60;flex:1;margin:0;padding:12px;">✔️ پاشەکەوتکردن</button>
-        <button onclick="window.closeModal()"
-          style="background:#95a5a6;flex:1;margin:0;padding:12px;">❌ پاشگەزبوونەوە</button>
-      </div>
-    </div>
-  `;
-  window.showModal('✏️ دەسکاریکردنی تۆمار', formHtml);
-  setTimeout(() => { const i = document.getElementById('editAdultInput'); if(i) i.focus(); }, 100);
-};
+window.editEntry = async function(docId, currentAdult, currentChild) {
+  const newAdult = prompt("🧑 ژمارەی نوێی نەخۆشی گەورە:", currentAdult);
+  if (newAdult === null) return;
+  const newChild = prompt("🧒 ژمارەی نوێی نەخۆشی منال:", currentChild);
+  if (newChild === null) return;
 
-window.saveEditEntry = async function(docId) {
-  const adultInput = document.getElementById('editAdultInput');
-  const childInput = document.getElementById('editChildInput');
-  const msgEl = document.getElementById('editEntryMsg');
-  const adultVal = parseInt(adultInput?.value);
-  const childVal = parseInt(childInput?.value);
+  const adultVal = parseInt(newAdult);
+  const childVal = parseInt(newChild);
   if (isNaN(adultVal) || isNaN(childVal) || adultVal < 0 || childVal < 0) {
-    if (msgEl) msgEl.textContent = "⚠️ ژمارە هەڵەیە!";
+    alert("⚠️ ژمارە هەڵەیە!");
     return;
   }
-  window.closeModal();
+
   showLoading();
   try {
-    await setDoc(doc(db, "entries", docId), {
-      countAdult: adultVal,
+    await setDoc(doc(db, "entries", docId), { 
+      countAdult: adultVal, 
       countChild: childVal,
       lastEditedBy: currentUser.email,
       lastEditedAt: Timestamp.now()
     }, { merge: true });
+    alert("✅ تۆمارەکە نوێ کرایەوە!");
     window.loadDaily();
   } catch(e) {
     alert("❌ هەڵە: " + e.message);
@@ -1071,26 +1047,12 @@ window.saveEditEntry = async function(docId) {
   }
 };
 
-window.deleteEntry = function(docId) {
-  const confirmHtml = `
-    <div style="direction:rtl;text-align:center;">
-      <p style="font-size:18px;margin-bottom:20px;">⚠️ دڵنیایت لە سڕینەوەی ئەم تۆمارە؟</p>
-      <div style="display:flex;gap:10px;">
-        <button onclick="window.confirmDeleteEntry('${docId}')"
-          style="background:#e74c3c;flex:1;margin:0;padding:12px;">🗑️ سڕینەوە</button>
-        <button onclick="window.closeModal()"
-          style="background:#95a5a6;flex:1;margin:0;padding:12px;">❌ پاشگەزبوونەوە</button>
-      </div>
-    </div>
-  `;
-  window.showModal('سڕینەوەی تۆمار', confirmHtml);
-};
-
-window.confirmDeleteEntry = async function(docId) {
-  window.closeModal();
+window.deleteEntry = async function(docId) {
+  if (!confirm("⚠️ دڵنیایت لە سڕینەوەی ئەم تۆمارە؟")) return;
   showLoading();
   try {
     await deleteDoc(doc(db, "entries", docId));
+    alert("✅ تۆمارەکە سڕایەوە!");
     window.loadDaily();
   } catch(e) {
     alert("❌ هەڵە: " + e.message);
