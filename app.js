@@ -944,6 +944,9 @@ async function fetchDailyForCurrentUser() {
   ));
 }
 
+// ============================================
+// DAILY STATS - دڵنیابە لەوەی کە یوزەری ئاسایی تەنها داتای خۆی دەبینێت
+// ============================================
 window.loadDaily = async function () {
   showLoading();
   const snap = await fetchDailyForCurrentUser();
@@ -955,7 +958,7 @@ window.loadDaily = async function () {
     return;
   }
 
-  const staffName = currentUser.email.toLowerCase().split('@')[0];
+  const staffName = currentUser ? currentUser.email.toLowerCase().split('@')[0] : "";
 
   let html = `<table><thead><tr>
     <th>کارمەند</th>
@@ -971,6 +974,7 @@ window.loadDaily = async function () {
     const data = d.data();
     const docId = d.id;
 
+    // پشکنین: ئەگەر یوزەری ئاسایی بێت، تەنها داتای خۆی پیشان بدە
     if (!isCurrentUserAdmin && data.staff !== staffName) return;
 
     const adult = data.countAdult ?? data.count ?? 0;
@@ -979,9 +983,10 @@ window.loadDaily = async function () {
 
     totalAdult += adult;
     totalChild += child;
-    totalAll   += total;
+    totalAll += total;
     
     let actionButtons = "";
+    // یوزەری ئاسایی دەتوانێت تەنها داتای خۆی دەستکاری بکات
     if (isCurrentUserAdmin || data.staff === staffName) {
       actionButtons = `
         <button onclick="editEntry('${docId}', ${adult}, ${child})" style="width:auto;padding:4px 8px;margin:2px;font-size:11px;">✏️</button>
