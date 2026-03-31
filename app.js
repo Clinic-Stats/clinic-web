@@ -1014,66 +1014,41 @@ window.loadDaily = async function () {
   hideLoading();
 };
 
-// ============================================
-// EDIT ENTRY - باشترکراو
-// ============================================
 window.editEntry = function(docId, currentAdult, currentChild) {
-  const adultVal = parseInt(currentAdult) || 0;
-  const childVal = parseInt(currentChild) || 0;
-  
   const isDark = document.body.classList.contains('dark-mode');
+  const bg = isDark ? '#0f0f1f' : '#fff';
+  const fg = isDark ? '#eee' : '#333';
   const formHtml = `
-    <div style="direction: rtl;">
-      <label style="display:block;margin-bottom:8px;font-weight:bold;">🧑 ژمارەی نوێی نەخۆشی گەورە:</label>
-      <input type="number" id="editAdultInput" value="${adultVal}" min="0"
-        style="width:100%;padding:12px;margin-bottom:16px;border-radius:10px;border:2px solid ${isDark ? '#2a3550' : '#e8ecf0'};font-size:16px;
-               background:${isDark ? '#0f0f1f' : '#fff'};color:${isDark ? '#eee' : '#333'};">
-      <label style="display:block;margin-bottom:8px;font-weight:bold;">🧒 ژمارەی نوێی نەخۆشی منال:</label>
-      <input type="number" id="editChildInput" value="${childVal}" min="0"
-        style="width:100%;padding:12px;margin-bottom:20px;border-radius:10px;border:2px solid ${isDark ? '#2a3550' : '#e8ecf0'};font-size:16px;
-               background:${isDark ? '#0f0f1f' : '#fff'};color:${isDark ? '#eee' : '#333'};">
-      <div id="editEntryMsg" style="color:#e74c3c;margin-bottom:12px;font-size:13px;text-align:center;"></div>
-      <div style="display:flex;gap:12px;">
+    <div style="direction:rtl;">
+      <label style="display:block;margin-bottom:6px;font-weight:bold;">🧑 ژمارەی نوێی نەخۆشی گەورە:</label>
+      <input type="number" id="editAdultInput" value="${currentAdult}" min="0"
+        style="width:100%;padding:10px;margin-bottom:14px;border-radius:8px;border:1px solid #ccc;font-size:16px;background:${bg};color:${fg};">
+      <label style="display:block;margin-bottom:6px;font-weight:bold;">🧒 ژمارەی نوێی نەخۆشی منال:</label>
+      <input type="number" id="editChildInput" value="${currentChild}" min="0"
+        style="width:100%;padding:10px;margin-bottom:20px;border-radius:8px;border:1px solid #ccc;font-size:16px;background:${bg};color:${fg};">
+      <p id="editEntryMsg" style="color:red;margin-bottom:8px;font-size:13px;min-height:18px;"></p>
+      <div style="display:flex;gap:10px;">
         <button onclick="window.saveEditEntry('${docId}')"
-          style="background:#27ae60;flex:1;margin:0;padding:12px;border-radius:10px;font-weight:bold;cursor:pointer;">✔️ پاشەکەوتکردن</button>
+          style="background:#27ae60;flex:1;margin:0;padding:12px;">✔️ پاشەکەوتکردن</button>
         <button onclick="window.closeModal()"
-          style="background:#95a5a6;flex:1;margin:0;padding:12px;border-radius:10px;font-weight:bold;cursor:pointer;">❌ پاشگەزبوونەوە</button>
+          style="background:#95a5a6;flex:1;margin:0;padding:12px;">❌ پاشگەزبوونەوە</button>
       </div>
     </div>
   `;
-  
-  window.showModal('✏️ دەستکاریکردنی تۆمار', formHtml);
-  
-  setTimeout(() => {
-    const adultInput = document.getElementById('editAdultInput');
-    if (adultInput) adultInput.focus();
-  }, 150);
+  window.showModal('✏️ دەسکاریکردنی تۆمار', formHtml);
+  setTimeout(() => { const i = document.getElementById('editAdultInput'); if(i) i.focus(); }, 100);
 };
 
-// ============================================
-// SAVE EDIT ENTRY
-// ============================================
 window.saveEditEntry = async function(docId) {
   const adultInput = document.getElementById('editAdultInput');
   const childInput = document.getElementById('editChildInput');
   const msgEl = document.getElementById('editEntryMsg');
-
-  if (!adultInput || !childInput) {
-    if (msgEl) msgEl.textContent = "⚠️ هەڵە لە دۆزینەوەی ئینپوت";
-    return;
-  }
-
-  const adultVal = parseInt(adultInput.value);
-  const childVal = parseInt(childInput.value);
-
+  const adultVal = parseInt(adultInput?.value);
+  const childVal = parseInt(childInput?.value);
   if (isNaN(adultVal) || isNaN(childVal) || adultVal < 0 || childVal < 0) {
-    if (msgEl) {
-      msgEl.textContent = "⚠️ تکایە ژمارەی ڕاست بنووسە!";
-      msgEl.style.color = "red";
-    }
+    if (msgEl) msgEl.textContent = "⚠️ ژمارە هەڵەیە!";
     return;
   }
-
   window.closeModal();
   showLoading();
   try {
@@ -1091,19 +1066,15 @@ window.saveEditEntry = async function(docId) {
   }
 };
 
-// ============================================
-// DELETE ENTRY
-// ============================================
 window.deleteEntry = function(docId) {
-  const isDark = document.body.classList.contains('dark-mode');
   const confirmHtml = `
-    <div style="direction: rtl; text-align: center;">
+    <div style="direction:rtl;text-align:center;">
       <p style="font-size:18px;margin-bottom:20px;">⚠️ دڵنیایت لە سڕینەوەی ئەم تۆمارە؟</p>
-      <div style="display:flex;gap:12px;">
+      <div style="display:flex;gap:10px;">
         <button onclick="window.confirmDeleteEntry('${docId}')"
-          style="background:#e74c3c;flex:1;margin:0;padding:12px;border-radius:10px;">🗑️ سڕینەوە</button>
+          style="background:#e74c3c;flex:1;margin:0;padding:12px;">🗑️ سڕینەوە</button>
         <button onclick="window.closeModal()"
-          style="background:#95a5a6;flex:1;margin:0;padding:12px;border-radius:10px;">❌ پاشگەزبوونەوە</button>
+          style="background:#95a5a6;flex:1;margin:0;padding:12px;">❌ پاشگەزبوونەوە</button>
       </div>
     </div>
   `;
