@@ -17,47 +17,45 @@
 </head>
 <body>
 
-  <div id="loadingSpinner" style="display:none;">
+  <div id="loadingSpinner" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
     <div class="spinner"></div>
   </div>
 
-  <!-- LOGIN PAGE -->
+  <!-- LOGIN -->
   <div id="loginPage">
     <div class="login-card">
-      <div class="login-logo">🧠</div>
-      <h1>کلینیکی تاقە</h1>
-      <p class="login-subtitle">پزیشکی دەروونی</p>
-      
-      <label>ناوی بەکارهێنەر</label>
+      <p style="font-size:10px;color:#aaa;text-align:center;margin-bottom:10px;letter-spacing:0.5px;">Developed by Karwan &nbsp;|&nbsp; 07507411341 &nbsp;/&nbsp; 07701261978</p>
+      <div class="login-logo">🏥</div>
+      <h1>سیستەمی کلینیک</h1>
+      <p class="login-subtitle">چوونە ژوورەوە بە ئەکاونتەکەت</p>
+      <label>ناوی کارمەند</label>
       <input type="text" id="loginEmail" placeholder="نموونە: naza" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus();">
-      
-      <label>پاسۆرد</label>
+      <label>پاسوۆرد</label>
       <input type="password" id="loginPassword" placeholder="••••••" onkeydown="if(event.key==='Enter') window.login();">
-      
       <button id="btnLogin">چوونەژوورەوە</button>
       <p id="loginError"></p>
-      <p class="developer-credit">Developed by Karwan | 07507411341 / 07701261978</p>
     </div>
   </div>
 
   <!-- DASHBOARD -->
   <div id="dashboard" style="display:none;">
-    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 
     <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+    <aside id="sidebar" class="sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-logo">🧠</div>
+        <div class="sidebar-logo">🏥</div>
         <div class="sidebar-info">
-          <span class="sidebar-app-name">کلینیکی تاقە</span>
-          <span class="sidebar-user" id="sidebarUserName">بەکارهێنەر</span>
+          <span class="sidebar-app-name">کلینیک</span>
+          <span id="sidebarUserName" class="sidebar-user"></span>
         </div>
         <button class="sidebar-close" onclick="closeSidebar()">✕</button>
       </div>
 
       <nav class="sidebar-nav">
         <div class="nav-label-group">سەرەکی</div>
-        
+
         <a href="#" class="nav-item active" data-section="saveSection" onclick="showSection('saveSection',this)">
           <span class="ni">📝</span><span class="nl">تۆمارکردنی نەخۆش</span><span class="na">›</span>
         </a>
@@ -72,365 +70,868 @@
         </a>
 
         <div class="nav-label-group admin-label" id="adminNavLabel" style="display:none;">بەڕێوەبردن</div>
-        <a href="#" class="nav-item admin-item" data-section="adminSectionPage" id="adminNavItem" style="display:none;" onclick="showSection('adminSectionPage',this)">
+        <a href="#" class="nav-item" data-section="adminSectionPage" id="adminNavItem" style="display:none;" onclick="showSection('adminSectionPage',this)">
           <span class="ni">👑</span><span class="nl">بەڕێوەبردن</span><span class="na">›</span>
         </a>
-        <a href="#" class="nav-item admin-item" data-section="searchSectionPage" id="searchNavItem" style="display:none;" onclick="showSection('searchSectionPage',this)">
+        <a href="#" class="nav-item" data-section="searchSectionPage" id="searchNavItem" style="display:none;" onclick="showSection('searchSectionPage',this)">
           <span class="ni">🔍</span><span class="nl">گەڕان بە کارمەند</span><span class="na">›</span>
         </a>
-        <a href="#" class="nav-item admin-item" data-section="qrSectionPage" id="qrNavItem" style="display:none;" onclick="showSection('qrSectionPage',this)">
+        <a href="#" class="nav-item" data-section="qrSectionPage" id="qrNavItem" style="display:none;" onclick="showSection('qrSectionPage',this)">
           <span class="ni">📱</span><span class="nl">QR Code</span><span class="na">›</span>
         </a>
-        <a href="#" class="nav-item admin-item" data-section="backupSectionPage" id="backupNavItem" style="display:none;" onclick="showSection('backupSectionPage',this)">
+        <a href="#" class="nav-item" data-section="backupSectionPage" id="backupNavItem" style="display:none;" onclick="showSection('backupSectionPage',this)">
           <span class="ni">💾</span><span class="nl">بەک‌ئەپ</span><span class="na">›</span>
         </a>
       </nav>
 
       <div class="sidebar-footer">
         <button class="logout-btn" id="btnLogout">🚪 دەرچوون</button>
-        <button id="themeSidebarBtn" class="theme-btn">🌙 ڕێژەی تاریک</button>
+        <button id="themeSidebarBtn" class="theme-btn">🌙 Dark Mode</button>
       </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN -->
     <div class="main-wrap">
       <div class="topbar">
-        <button class="burger" onclick="openSidebar()">☰</button>
-        <h1 class="page-ttl" id="pageTitle">📝 تۆمارکردنی نەخۆش</h1>
+        <div class="topbar-actions">
+          <button class="burger" onclick="openSidebar()">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+        <h1 id="pageTitle" class="page-ttl">📝 تۆمارکردنی نەخۆش</h1>
         <div class="topbar-right">
-          <button class="theme-topbar" id="themeToggle">🌙</button>
+          <button class="topbar-icon-btn theme-topbar" id="themeToggle">🌙</button>
           <span id="currentUserName" class="topbar-user"></span>
-          <button class="mobile-logout" id="btnLogoutMobile">🚪</button>
+          <button class="topbar-icon-btn topbar-logout-btn" id="btnLogoutMobile" title="Logout">🚪</button>
         </div>
       </div>
 
       <div class="content-area">
+
         <!-- تۆمارکردنی نەخۆش -->
         <section class="content-section active" id="saveSection">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-icon">📝</span>
-              <h2>تۆمارکردنی نەخۆش</h2>
+          <div class="sec-head"><span>📝</span><h2>تۆمارکردنی نەخۆش</h2></div>
+          <div class="card" style="text-align:center;">
+            <label>🧑 ژمارەی نەخۆشی گەورە:</label>
+            <div class="cnt-row">
+              <button type="button" onclick="window.changeCount('patientCountAdult',-1)" class="cnt-btn minus">−</button>
+              <input type="number" id="patientCountAdult" value="0" min="0" class="cnt-inp">
+              <button type="button" onclick="window.changeCount('patientCountAdult',1)" class="cnt-btn plus">+</button>
             </div>
-            
-            <div class="counter-group">
-              <label>🧑 نەخۆشی گەورە</label>
-              <div class="cnt-row">
-                <button type="button" onclick="window.changeCount('patientCountAdult',-1)" class="cnt-btn minus">−</button>
-                <input type="number" id="patientCountAdult" value="0" min="0" class="cnt-inp">
-                <button type="button" onclick="window.changeCount('patientCountAdult',1)" class="cnt-btn plus">+</button>
-              </div>
+            <label>🧒 ژمارەی نەخۆشی منال:</label>
+            <div class="cnt-row">
+              <button type="button" onclick="window.changeCount('patientCountChild',-1)" class="cnt-btn minus">−</button>
+              <input type="number" id="patientCountChild" value="0" min="0" class="cnt-inp">
+              <button type="button" onclick="window.changeCount('patientCountChild',1)" class="cnt-btn plus">+</button>
             </div>
-
-            <div class="counter-group">
-              <label>🧒 نەخۆشی مناڵ</label>
-              <div class="cnt-row">
-                <button type="button" onclick="window.changeCount('patientCountChild',-1)" class="cnt-btn minus">−</button>
-                <input type="number" id="patientCountChild" value="0" min="0" class="cnt-inp">
-                <button type="button" onclick="window.changeCount('patientCountChild',1)" class="cnt-btn plus">+</button>
-              </div>
-            </div>
-
-            <div class="date-group">
-              <label>📅 ڕێکەوت</label>
-              <input type="date" id="entryDate" class="date-inp">
-            </div>
-
-            <button id="btnSaveEntry" class="btn-primary save-btn">💾 پاشکەوتکردن</button>
-            <p id="statusMsg" class="status-msg"></p>
+            <label>📅 ڕێکەوت:</label>
+            <input type="date" id="entryDate" class="date-inp">
+            <button id="btnSaveEntry" class="save-btn">💾 پاشکەوتکردن</button>
+            <p id="statusMsg"></p>
           </div>
         </section>
 
         <!-- ئاماری ڕۆژانە -->
         <section class="content-section" id="dailySection">
+          <div class="sec-head"><span>📅</span><h2>ئاماری ڕۆژانە</h2></div>
           <div class="card">
-            <div class="card-header">
-              <span class="card-icon">📅</span>
-              <h2>ئاماری ڕۆژانە</h2>
-            </div>
-            
-            <div class="filter-group">
-              <label>ڕێکەوت هەڵبژێرە</label>
-              <input type="date" id="dailyFilterDate" class="date-inp">
-            </div>
-            
+            <label>ڕێکەوت هەڵبژێرە:</label>
+            <input type="date" id="dailyFilterDate" class="date-inp">
             <div class="button-group">
-              <button id="btnLoadDaily" class="btn-secondary">👁️ پیشاندان</button>
+              <button id="btnLoadDaily">👁️ پیشاندان</button>
               <button id="btnExportDailyExcel" class="btn-excel">📊 Excel</button>
               <button id="btnExportDailyPDF" class="btn-pdf">📄 PDF</button>
             </div>
-            
-            <div id="dailyOutput" class="table-wrapper"></div>
+            <div id="dailyOutput" style="margin-top:15px; overflow-x:auto;"></div>
           </div>
         </section>
 
         <!-- ئاماری هەفتانە -->
         <section class="content-section" id="weeklySection">
+          <div class="sec-head"><span>📆</span><h2>ئاماری هەفتانە</h2></div>
           <div class="card">
-            <div class="card-header">
-              <span class="card-icon">📆</span>
-              <h2>ئاماری هەفتانە</h2>
+            <div class="sel-wrap">
+              <select id="weekSelector" onchange="window.selectWeekFromDropdown()"></select>
+              <div id="weekDateRangeLabel" style="font-size:.9em;color:#888;text-align:center;margin-top:6px;"></div>
             </div>
-            
-            <div class="filter-group">
-              <select id="weekSelector" class="select-input" onchange="window.selectWeekFromDropdown()"></select>
-              <div id="weekDateRangeLabel" class="date-range-label"></div>
-            </div>
-            
             <div class="button-group">
-              <button id="btnLoadWeekly" class="btn-secondary">👁️ پیشاندان</button>
+              <button id="btnLoadWeekly">👁️ پیشاندان</button>
               <button id="btnExportWeeklyExcel" class="btn-excel">📊 Excel</button>
               <button id="btnExportWeeklyPDF" class="btn-pdf">📄 PDF</button>
             </div>
-            
-            <div class="chart-buttons">
+            <div class="chart-btns">
               <button id="chartTypeBar" class="chart-btn">📊 Bar</button>
               <button id="chartTypeLine" class="chart-btn">📈 Line</button>
               <button id="chartTypePie" class="chart-btn">🥧 Pie</button>
             </div>
-            
-            <div id="weeklyOutput" class="table-wrapper"></div>
-            <div id="weeklyChartContainer" class="chart-container" style="display:none;">
-              <canvas id="weeklyChart"></canvas>
+            <div id="weeklyOutput" style="overflow-x:auto;"></div>
+            <div id="weeklyChartContainer" style="margin-top:20px;display:none;">
+              <canvas id="weeklyChart" height="250"></canvas>
             </div>
           </div>
         </section>
 
         <!-- ئاماری مانگانە -->
         <section class="content-section" id="monthlySection">
+          <div class="sec-head"><span>🗓️</span><h2>ئاماری مانگانە</h2></div>
           <div class="card">
-            <div class="card-header">
-              <span class="card-icon">🗓️</span>
-              <h2>ئاماری مانگانە</h2>
+            <div class="sel-wrap">
+              <select id="monthSelector" onchange="window.selectMonth()"></select>
             </div>
-            
-            <div class="filter-group">
-              <select id="monthSelector" class="select-input"></select>
-            </div>
-            
             <div class="button-group">
-              <button id="btnLoadMonthly" class="btn-secondary">👁️ پیشاندان</button>
+              <button id="btnLoadMonthly">👁️ پیشاندان</button>
               <button id="btnExportMonthlyExcel" class="btn-excel">📊 Excel</button>
               <button id="btnExportMonthlyPDF" class="btn-pdf">📄 PDF</button>
             </div>
-            
-            <div id="monthlyOutput" class="table-wrapper"></div>
-            <div id="monthlyChartContainer" class="chart-container" style="display:none;">
-              <canvas id="monthlyChart"></canvas>
+            <div id="monthlyOutput" style="overflow-x:auto;"></div>
+            <div id="monthlyChartContainer" style="margin-top:20px;display:none;">
+              <canvas id="monthlyChart" height="250"></canvas>
             </div>
           </div>
         </section>
 
         <!-- بەڕێوەبردن -->
         <section class="content-section" id="adminSectionPage">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-icon">👑</span>
-              <h2>بەڕێوەبردن</h2>
-            </div>
-            
-            <div id="adminSection" class="admin-panel">
-              <button id="userManagementBtn" class="btn-purple" onclick="window.showUserManagement && window.showUserManagement()">
-                👥 بەڕێوەبردنی بەکارهێنەران
-              </button>
-              <button id="toggleAdminBtn" class="btn-dark">➕ زیادکردنی کارمەندی نوێ</button>
-              
-              <div id="adminFormWrapper" class="admin-form" style="display:none;">
-                <label>ناوی کارمەند</label>
-                <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند">
-                <label>پاسۆرد</label>
-                <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
-                <button id="btnCreateStaff" class="btn-danger">تۆمارکردنی کارمەند</button>
-                <p id="createStaffMsg"></p>
-              </div>
+          <div class="sec-head"><span>👑</span><h2>بەڕێوەبردن</h2></div>
+          <div class="card admin-panel" id="adminSection" style="border:2px solid #e74c3c;">
+            <button id="userManagementBtn" style="background:#9b59b6;margin-bottom:10px;" onclick="window.showUserManagement && window.showUserManagement()">👥 بەڕێوەبردنی بەکارهێنەران</button>
+            <button id="toggleAdminBtn" style="background:#2c3e50;margin-bottom:10px;">➕ زیادکردنی کارمەندی نوێ</button>
+            <div id="adminFormWrapper" style="display:none;margin-top:15px;padding-top:15px;border-top:1px solid #ccc;">
+              <label>ناوی کارمەند:</label>
+              <input type="text" id="newStaffEmail" placeholder="ناوی کارمەند بێ بۆشایی">
+              <label>پاسوۆرد:</label>
+              <input type="password" id="newStaffPassword" placeholder="لانی کەم ٦ پیت">
+              <button id="btnCreateStaff" style="background:#e74c3c;">تۆمارکردنی کارمەند</button>
+              <p id="createStaffMsg"></p>
             </div>
           </div>
         </section>
 
         <!-- گەڕان -->
         <section class="content-section" id="searchSectionPage">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-icon">🔍</span>
-              <h2>گەڕان بە پێی کارمەند</h2>
-            </div>
-            
-            <div class="filter-group">
-              <select id="staffSearchSelect" class="select-input" onchange="window.searchByStaff && window.searchByStaff()">
-                <option value="">-- هەڵبژێرە کارمەندێک --</option>
-              </select>
-            </div>
-            
-            <button id="btnSearchStaff" class="btn-primary">🔍 گەڕان</button>
-            <p class="info-text">💡 کارمەندێک هەڵبژێرە یان دوگمەی گەڕان دابگرە</p>
-            <div id="searchOutput" class="table-wrapper"></div>
+          <div class="sec-head"><span>🔍</span><h2>گەڕان بە پێی کارمەند</h2></div>
+          <div class="card" id="searchSection">
+            <select id="staffSearchSelect" onchange="window.searchByStaff && window.searchByStaff()" style="width:100%;padding:12px;font-size:16px;border-radius:8px;">
+              <option value="">-- هەڵبژێرە کارمەندێک --</option>
+            </select>
+            <button id="btnSearchStaff" style="background:#3498db;margin-top:10px;">🔍 گەڕان</button>
+            <p style="font-size:12px;color:#666;margin-top:8px;">💡 کارمەندێک هەڵبژێرە یان دوگمەی گەڕان دابگرە</p>
+            <div id="searchOutput" style="margin-top:15px;overflow-x:auto;"></div>
           </div>
         </section>
 
         <!-- QR Code -->
         <section class="content-section" id="qrSectionPage">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-icon">📱</span>
-              <h2>QR Code بۆ چوونەژوورەوە</h2>
-            </div>
-            
-            <button id="generateQrBtn" class="btn-success">🔲 پیشاندانی QR Code</button>
-            
-            <div id="qrCodeDisplay" class="qr-display" style="display:none;">
+          <div class="sec-head"><span>📱</span><h2>QR Code بۆ چوونەژوورەوە</h2></div>
+          <div class="card" id="qrCodeSection">
+            <button id="generateQrBtn" style="background:#27ae60;">🔲 پیشاندانی QR Code</button>
+            <div id="qrCodeDisplay" style="text-align:center;margin-top:20px;display:none;">
               <div id="qrcode"></div>
-              <p>ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
-              <button id="downloadQrBtn" class="btn-primary">📥 دابەزاندنی وێنە</button>
+              <p style="margin-top:10px;font-size:12px;color:#666;">ئەم QR Code سکان بکە بۆ چوونە ژوورەوە</p>
+              <button id="downloadQrBtn" style="background:#3498db;width:auto;display:inline-block;margin-top:10px;">📥 دابەزاندنی وێنە</button>
             </div>
           </div>
         </section>
 
         <!-- بەک‌ئەپ -->
         <section class="content-section" id="backupSectionPage">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-icon">💾</span>
-              <h2>بەک‌ئەپ (Backup)</h2>
-            </div>
-            
+          <div class="sec-head"><span>💾</span><h2>بەک‌ئەپ (Backup)</h2></div>
+          <div class="card" id="backupSection">
             <div class="button-group">
-              <button id="btnBackup" class="btn-success">📥 دابەزاندنی بەک‌ئەپ</button>
-              <button id="btnRestore" class="btn-warning">📤 بەرجەستەکردنەوە</button>
+              <button id="btnBackup" style="background:#27ae60!important;">📥 دابەزاندنی بەک‌ئەپ</button>
+              <button id="btnRestore" style="background:#e67e22!important;">📤 بەرجەستەکردنەوە</button>
             </div>
-            
             <input type="file" id="restoreFile" style="display:none;" accept=".json">
-            <p class="warning-text">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
+            <p style="font-size:12px;color:#666;text-align:center;margin-top:10px;">⚠️ بەک‌ئەپ تەنها بۆ بەڕێوەبەر</p>
           </div>
         </section>
+
       </div>
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
-  
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+
+    body{
+      font-family:'Vazirmatn','Segoe UI',sans-serif;
+      background:#f0f4f8;
+      min-height:100vh;
+      transition:background .3s,color .3s;
+      overflow-x:hidden;
+    }
+
+    /* LOGIN */
+    #loginPage{
+      display:flex;justify-content:center;align-items:center;
+      min-height:100vh;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      padding:20px;
+    }
+    .login-card{
+      background:white;border-radius:24px;padding:40px 32px;
+      width:100%;max-width:380px;
+      box-shadow:0 20px 60px rgba(0,0,0,.2);
+      text-align:center;
+      animation:slideUp .5s ease;
+    }
+    .login-logo{font-size:52px;margin-bottom:12px;animation:bop 2s infinite;}
+    @keyframes bop{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+    .login-card h1{font-size:22px;font-weight:700;color:#2c3e50;margin-bottom:6px;}
+    .login-subtitle{color:#888;font-size:13px;margin-bottom:24px;}
+    .login-card label{text-align:right;font-size:13px;font-weight:600;color:#555;margin-top:14px;margin-bottom:4px;display:block;}
+    .login-card input{border:2px solid #e8ecf0;border-radius:12px;padding:12px 16px;font-size:15px;width:100%;transition:border-color .2s;font-family:inherit;display:block;margin-top:4px;}
+    .login-card input:focus{outline:none;border-color:#667eea;}
+    .login-card button{background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:14px;color:white;font-size:16px;font-weight:600;padding:14px;width:100%;margin-top:20px;cursor:pointer;font-family:inherit;transition:transform .2s,box-shadow .2s;display:block;}
+    .login-card button:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(102,126,234,.4);}
+    #loginError{color:#e74c3c;margin-top:10px;font-size:13px;}
+    body.dark-mode .login-card{background:#16213e;}
+    body.dark-mode .login-card h1{color:#eee;}
+    body.dark-mode .login-card label{color:#ccc;}
+
+    /* SIDEBAR */
+    .sidebar{
+      position:fixed;top:0;right:0;
+      width:272px;height:100vh;
+      background:#1a1d2e;
+      z-index:1000;
+      display:flex;flex-direction:column;
+      box-shadow:-4px 0 24px rgba(0,0,0,.18);
+      transition:transform .35s cubic-bezier(.4,0,.2,1);
+    }
+    body.dark-mode .sidebar{background:#0d0e1c;}
+
+    @media(min-width:769px){
+      .sidebar{transform:translateX(0)!important;}
+      .sidebar-overlay{display:none!important;}
+      .sidebar-close{display:none!important;}
+    }
+    @media(max-width:768px){
+      .sidebar{transform:translateX(100%);}
+      .sidebar.open{transform:translateX(0);}
+    }
+
+    .sidebar-overlay{
+      display:none;position:fixed;inset:0;
+      background:rgba(0,0,0,.5);z-index:999;
+      opacity:0;transition:opacity .3s;
+      backdrop-filter:blur(3px);
+    }
+    .sidebar-overlay.active{display:block;opacity:1;}
+
+    .sidebar-header{
+      display:flex;align-items:center;gap:12px;
+      padding:22px 18px 18px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+    }
+    .sidebar-logo{font-size:30px;animation:pulse 3s ease infinite;}
+    @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+    .sidebar-info{flex:1;display:flex;flex-direction:column;gap:2px;}
+    .sidebar-app-name{color:#fff;font-size:16px;font-weight:700;}
+    .sidebar-user{color:#6b7280;font-size:12px;}
+    .sidebar-close{
+      background:rgba(255,255,255,.08);border:none;color:#aaa;
+      width:30px;height:30px;border-radius:8px;cursor:pointer;
+      font-size:13px;display:flex;align-items:center;justify-content:center;
+      margin:0;padding:0;min-width:unset;transition:background .2s;
+    }
+    .sidebar-close:hover{background:rgba(255,255,255,.18);color:white;}
+
+    .sidebar-nav{
+      flex:1;overflow-y:auto;padding:14px 10px;
+      scrollbar-width:none;
+    }
+    .sidebar-nav::-webkit-scrollbar{display:none;}
+
+    .nav-label-group{
+      color:#374151;font-size:10px;font-weight:700;
+      letter-spacing:1.5px;text-transform:uppercase;
+      padding:8px 10px 5px;margin-top:6px;
+    }
+
+    .nav-item{
+      display:flex;align-items:center;gap:11px;
+      padding:11px 13px;border-radius:12px;
+      text-decoration:none;color:#6b7280;
+      font-size:14px;font-weight:500;
+      margin-bottom:3px;
+      transition:all .25s cubic-bezier(.4,0,.2,1);
+      position:relative;overflow:hidden;
+    }
+    .nav-item::before{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,rgba(102,126,234,.15),rgba(118,75,162,.15));
+      opacity:0;transition:opacity .25s;border-radius:12px;
+    }
+    .nav-item:hover{color:#e2e8f0;}
+    .nav-item:hover::before{opacity:1;}
+    .nav-item.active{
+      background:linear-gradient(135deg,#667eea,#764ba2);
+      color:#fff;
+      box-shadow:0 4px 15px rgba(102,126,234,.35);
+      transform:translateX(-2px);
+    }
+    .nav-item.active::before{opacity:0;}
+    .ni{font-size:17px;width:22px;text-align:center;flex-shrink:0;}
+    .nl{flex:1;}
+    .na{font-size:17px;opacity:.35;transition:transform .2s;}
+    .nav-item.active .na{opacity:1;transform:translateX(-3px);}
+
+    .sidebar-footer{
+      padding:14px 10px;
+      border-top:1px solid rgba(255,255,255,.07);
+      display:flex;flex-direction:column;gap:7px;
+    }
+    .theme-btn{
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.1);
+      color:#9ca3af;border-radius:10px;
+      padding:11px 14px;font-size:14px;cursor:pointer;
+      width:100%;text-align:right;font-family:inherit;
+      transition:all .2s;margin:0;
+      display:flex;align-items:center;gap:8px;
+    }
+    .theme-btn:hover{background:rgba(255,255,255,.14);color:#fff;transform:none;}
+    .logout-btn{
+      background:rgba(231,76,60,.12);
+      border:1px solid rgba(231,76,60,.25);
+      color:#e74c3c;border-radius:10px;
+      padding:10px 14px;font-size:13px;cursor:pointer;
+      width:100%;text-align:right;font-family:inherit;
+      transition:all .2s;margin:0;
+    }
+    .logout-btn:hover{background:#e74c3c;color:white;transform:none;}
+
+    /* MAIN WRAP */
+    .main-wrap{
+      margin-right:272px;min-height:100vh;
+      transition:margin-right .35s;
+      display:flex;flex-direction:column;
+    }
+    @media(max-width:768px){.main-wrap{margin-right:0;}}
+
+    /* TOPBAR */
+    .topbar{
+      background:white;padding:13px 18px;
+      display:flex;align-items:center;gap:13px;
+      box-shadow:0 1px 10px rgba(0,0,0,.06);
+      position:sticky;top:0;z-index:100;
+      border-bottom:1px solid #eef2f7;
+    }
+    body.dark-mode .topbar{background:#16213e;border-bottom-color:#2a3550;}
+
+    .burger{
+      background:none;border:none;cursor:pointer;
+      padding:6px;width:36px;height:36px;
+      display:none;flex-direction:column;
+      justify-content:space-between;align-items:center;
+      border-radius:8px;transition:background .2s;
+      margin:0;
+    }
+    @media(max-width:768px){.burger{display:flex;}}
+    .burger span{display:block;width:21px;height:2.5px;background:#2c3e50;border-radius:3px;transition:all .3s;}
+    body.dark-mode .burger span{background:#eee;}
+    .burger:hover{background:rgba(0,0,0,.05);}
+
+    .page-ttl{flex:1;font-size:16px;font-weight:600;color:#1e2139;}
+    body.dark-mode .page-ttl{color:#eee;}
+    .topbar-actions{display:flex;align-items:center;}
+    .topbar-right{display:flex;align-items:center;gap:8px;}
+    .topbar-user{font-size:13px;color:#888;}
+    @media(max-width:480px){.topbar-user{display:none;}}
+    /* موبایل: burger لای چەپ، dark mode لای ڕاست، ناوی پەڕە ناوەڕاست */
+    @media(max-width:768px){
+      .topbar{flex-direction:row;}
+      .topbar-actions{order:1;margin-right:auto;}
+      .page-ttl{order:2;flex:1;text-align:center;}
+      .topbar-right{order:3;}
+    }
+
+    /* CONTENT */
+    .content-area{padding:20px;flex:1;}
+    @media(max-width:768px){.content-area{padding:14px;}}
+
+    .content-section{display:none;animation:fadeIn .3s ease;}
+    .content-section.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+
+    .sec-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;}
+    .sec-head span{font-size:24px;}
+    .sec-head h2{font-size:19px;font-weight:700;color:#1e2139;}
+    body.dark-mode .sec-head h2{color:#eee;}
+
+    /* CARD */
+    .card{
+      background:white;border-radius:16px;padding:20px;
+      box-shadow:0 2px 12px rgba(0,0,0,.06);
+      transition:all .3s;
+    }
+    body.dark-mode .card{background:#16213e;color:#eee;box-shadow:0 2px 12px rgba(0,0,0,.3);}
+
+    /* COUNTER */
+    .cnt-row{
+      display:flex;align-items:center;justify-content:center;
+      gap:16px;margin:12px 0 18px;direction:ltr;
+    }
+    .cnt-btn{
+      width:48px;height:48px;border-radius:14px;border:none;
+      font-size:24px;font-weight:700;cursor:pointer;
+      transition:all .2s;
+      display:flex;align-items:center;justify-content:center;
+      margin:0;padding:0;
+    }
+    .cnt-btn.minus{background:#fee2e2;color:#e74c3c;}
+    .cnt-btn.minus:hover{background:#e74c3c;color:white;transform:scale(1.05);}
+    .cnt-btn.plus{background:#d1fae5;color:#10b981;}
+    .cnt-btn.plus:hover{background:#10b981;color:white;transform:scale(1.05);}
+    .cnt-inp{
+      width:80px!important;height:48px;text-align:center;
+      font-size:22px;font-weight:700;border-radius:12px;
+      border:2px solid #e8ecf0;background:#f8fafc;
+      color:#1e2139;font-family:inherit;
+    }
+    body.dark-mode .cnt-inp{background:#0f1020;border-color:#2a3550;color:#eee;}
+
+    .date-inp{
+      display:block;margin:6px auto 16px;text-align:center;
+      font-size:15px;padding:10px 16px;font-weight:600;
+      width:200px!important;border-radius:12px;
+      border:2px solid #e8ecf0;font-family:inherit;color:#2c3e50;
+    }
+    body.dark-mode .date-inp{background:#0f1020;border-color:#2a3550;color:#eee;}
+
+    .save-btn{
+      width:100%;padding:14px;
+      background:linear-gradient(135deg,#667eea,#764ba2);
+      color:white;border:none;border-radius:14px;
+      font-size:16px;font-weight:600;cursor:pointer;
+      font-family:inherit;transition:all .2s;
+      box-shadow:0 4px 15px rgba(102,126,234,.3);
+      display:block;margin-top:12px;
+    }
+    .save-btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(102,126,234,.4);}
+
+    #statusMsg{margin-top:10px;font-weight:bold;text-align:center;}
+
+    /* FORMS */
+    label{display:block;margin-top:12px;font-weight:600;font-size:13px;color:#555;}
+    body.dark-mode label{color:#aaa;}
+    input,select{
+      width:100%;padding:10px 14px;margin-top:5px;
+      border-radius:10px;border:2px solid #e8ecf0;
+      font-size:15px;font-family:inherit;
+      transition:border-color .2s;background:white;color:#2c3e50;
+    }
+    input:focus,select:focus{outline:none;border-color:#667eea;}
+    body.dark-mode input,body.dark-mode select{background:#0f1020;color:#eee;border-color:#2a3550;}
+
+    /* BUTTONS */
+    button{
+      display:block;width:100%;margin-top:12px;padding:11px;
+      background:#3498db;color:white;border:none;
+      border-radius:10px;font-size:15px;cursor:pointer;
+      font-family:inherit;transition:all .2s;
+    }
+    button:hover{background:#2980b9;transform:translateY(-1px);}
+    .button-group{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+    .button-group button{flex:1;width:auto;margin-top:0;font-size:13px;padding:10px 8px;}
+    .btn-excel{background:#1d6f42!important;}
+    .btn-pdf{background:#e74c3c!important;}
+
+    .sel-wrap{background:#f8fafc;padding:14px;border-radius:12px;margin-bottom:14px;}
+    body.dark-mode .sel-wrap{background:#0f1020;}
+
+    .chart-btns{display:flex;gap:8px;justify-content:center;margin:14px 0;flex-wrap:wrap;}
+    .chart-btn{
+      flex:none;width:auto;padding:8px 18px;margin:0;
+      font-size:13px;background:#f0f4f8;color:#2c3e50;border-radius:20px;
+    }
+    body.dark-mode .chart-btn{background:#2a3550;color:#eee;}
+    .chart-btn:hover{background:#667eea;color:white;transform:none;}
+
+    /* TABLES */
+    table{width:100%;border-collapse:collapse;margin-top:14px;overflow-x:auto;display:block;}
+    th{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:12px 10px;font-size:13px;font-weight:600;}
+    td{padding:10px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:13px;}
+    body.dark-mode td{border-bottom-color:#2a3550;}
+    .total-row td{font-weight:bold;background:#eaf4fb;}
+    body.dark-mode .total-row td{background:#1a2f4a;}
+
+    /* ADMIN */
+    .admin-panel{background:#fff9f9!important;}
+    body.dark-mode .admin-panel{background:#1a1025!important;}
+
+    /* DARK */
+    body.dark-mode{background:#0f1020;color:#eee;}
+    body.dark-mode h2{color:#eee;}
+
+    /* SPINNER */
+    .spinner{
+      width:50px;height:50px;
+      border:5px solid #f3f3f3;
+      border-top:5px solid #667eea;
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+    canvas{max-width:100%;height:auto;}
+    #weeklyChart,#monthlyChart{max-height:200px!important;height:200px!important;width:100%!important;}
+    #weeklyChartContainer,#monthlyChartContainer{max-height:220px;margin:10px 0;}
+    @media(max-width:768px){
+      #weeklyChart,#monthlyChart{max-height:160px!important;height:160px!important;}
+      #weeklyChartContainer,#monthlyChartContainer{max-height:180px;}
+    }
+
+    /* MODAL */
+    .modal-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.5);
+      z-index:10000;display:flex;justify-content:center;align-items:center;
+      backdrop-filter:blur(4px);
+    }
+    .modal-container{
+      background:white;border-radius:20px;width:90%;max-width:600px;
+      max-height:80vh;overflow-y:auto;padding:24px;
+      animation:slideUp .3s ease;
+    }
+    body.dark-mode .modal-container{background:#16213e;color:#eee;}
+    .user-card{border:1px solid #e8ecf0;border-radius:14px;padding:16px;margin-bottom:12px;transition:all .2s;}
+    body.dark-mode .user-card{border-color:#2a3550;}
+    .user-card:hover{box-shadow:0 4px 15px rgba(0,0,0,.1);}
+    .role-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:bold;}
+    .role-admin{background:#fee2e2;color:#e74c3c;}
+    .role-staff{background:#dbeafe;color:#3498db;}
+
+    /* FIX: Topbar layout RTL */
+    .topbar {
+      justify-content: space-between;
+    }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      order: -1; /* goes to RIGHT side in RTL */
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .topbar-icon-btn {
+      background: rgba(0,0,0,0.05);
+      border: 1.5px solid rgba(0,0,0,0.08);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 0;
+      transition: all .2s;
+      flex-shrink: 0;
+    }
+    .topbar-icon-btn:hover { background: rgba(0,0,0,.1); transform: scale(1.05); box-shadow: none; }
+    body.dark-mode .topbar-icon-btn { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }
+    body.dark-mode .topbar-icon-btn:hover { background: rgba(255,255,255,.15); }
+    .theme-topbar { color: #e67e22; }
+
+    .topbar-logout-btn { color: #e74c3c !important; display: none !important; }
+    @media(max-width:768px) {
+      .topbar-logout-btn { display: flex !important; }
+    }
+      .burger { display: flex !important; }
+      .topbar-user { display: none; }
+    }
+
+    /* FIX: Dark mode for topbar and sidebar fully */
+    body.dark-mode .topbar { background: #12122a !important; border-bottom-color: #1e2040 !important; }
+    body.dark-mode .burger span { background: #eee !important; }
+    body.dark-mode .card { background: #16213e !important; color: #eee !important; }
+    body.dark-mode input, body.dark-mode select { background: #0f1020 !important; color: #eee !important; border-color: #2a3550 !important; }
+    body.dark-mode .cnt-inp { background: #0f1020 !important; border-color: #2a3550 !important; color: #eee !important; }
+    body.dark-mode .date-inp { background: #0f1020 !important; border-color: #2a3550 !important; color: #eee !important; }
+    body.dark-mode .sel-wrap { background: #0f1020 !important; }
+    body.dark-mode { background: #0f1020 !important; color: #eee !important; }
+    body.dark-mode .content-area { background: #0f1020; }
+    body.dark-mode .main-wrap { background: #0f1020; }
+  </style>
+
   <script>
-    // SIDEBAR FUNCTIONS
-    function openSidebar() {
+    // SIDEBAR
+    function openSidebar(){
       document.getElementById('sidebar').classList.add('open');
-      document.querySelector('.sidebar-overlay').classList.add('active');
-      document.body.style.overflow = 'hidden';
+      document.getElementById('sidebarOverlay').classList.add('active');
+      document.body.style.overflow='hidden';
     }
-    
-    function closeSidebar() {
+    function closeSidebar(){
       document.getElementById('sidebar').classList.remove('open');
-      document.querySelector('.sidebar-overlay').classList.remove('active');
-      document.body.style.overflow = '';
+      document.getElementById('sidebarOverlay').classList.remove('active');
+      document.body.style.overflow='';
     }
-    
-    const pageTitles = {
-      saveSection: '📝 تۆمارکردنی نەخۆش',
-      dailySection: '📅 ئاماری ڕۆژانە',
-      weeklySection: '📆 ئاماری هەفتانە',
-      monthlySection: '🗓️ ئاماری مانگانە',
-      adminSectionPage: '👑 بەڕێوەبردن',
-      searchSectionPage: '🔍 گەڕان',
-      qrSectionPage: '📱 QR Code',
-      backupSectionPage: '💾 بەک‌ئەپ'
+
+    const pageTitles={
+      saveSection:'📝 تۆمارکردنی نەخۆش',
+      dailySection:'📅 ئاماری ڕۆژانە',
+      weeklySection:'📆 ئاماری هەفتانە',
+      monthlySection:'🗓️ ئاماری مانگانە',
+      adminSectionPage:'👑 بەڕێوەبردن',
+      searchSectionPage:'🔍 گەڕان',
+      qrSectionPage:'📱 QR Code',
+      backupSectionPage:'💾 بەک‌ئەپ'
     };
-    
-    window.showSection = function(sectionId, el) {
-      document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-      const target = document.getElementById(sectionId);
-      if (target) target.classList.add('active');
-      
-      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      if (el) el.classList.add('active');
-      
-      const titleEl = document.getElementById('pageTitle');
-      if (titleEl && pageTitles[sectionId]) titleEl.textContent = pageTitles[sectionId];
-      
-      if (window.innerWidth <= 768) closeSidebar();
+
+    window.showSection=function(sectionId,el){
+      document.querySelectorAll('.content-section').forEach(s=>s.classList.remove('active'));
+      const t=document.getElementById(sectionId);
+      if(t) t.classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+      if(el) el.classList.add('active');
+      const ttl=document.getElementById('pageTitle');
+      if(ttl&&pageTitles[sectionId]) ttl.textContent=pageTitles[sectionId];
+      if(window.innerWidth<=768) closeSidebar();
     };
-    
-    // Sync admin nav visibility
-    function syncAdminNav() {
-      const adminSection = document.getElementById('adminSection');
-      const isAdmin = adminSection && adminSection.style.display !== 'none';
-      const adminNavs = ['adminNavLabel', 'adminNavItem', 'searchNavItem', 'qrNavItem', 'backupNavItem'];
-      adminNavs.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = isAdmin ? 'block' : 'none';
-      });
-    }
-    
-    // QR Code functionality
-    document.addEventListener("DOMContentLoaded", function() {
-      const generateBtn = document.getElementById("generateQrBtn");
-      const qrDisplay = document.getElementById("qrCodeDisplay");
-      const qrcodeDiv = document.getElementById("qrcode");
-      const downloadBtn = document.getElementById("downloadQrBtn");
-      let qrCreated = false;
-      
-      if (generateBtn && qrDisplay) {
-        generateBtn.addEventListener("click", function() {
-          if (qrDisplay.style.display === "block") {
-            qrDisplay.style.display = "none";
-            generateBtn.innerHTML = "🔲 پیشاندانی QR Code";
-            generateBtn.className = "btn-success";
+
+    // QR
+    document.addEventListener("DOMContentLoaded",function(){
+      const generateBtn=document.getElementById("generateQrBtn");
+      const qrDisplay=document.getElementById("qrCodeDisplay");
+      const qrcodeDiv=document.getElementById("qrcode");
+      const downloadBtn=document.getElementById("downloadQrBtn");
+      let qrCreated=false;
+      if(generateBtn&&qrDisplay){
+        generateBtn.addEventListener("click",function(){
+          if(qrDisplay.style.display==="block"){
+            qrDisplay.style.display="none";
+            generateBtn.innerHTML="🔲 پیشاندانی QR Code";
+            generateBtn.style.background="#27ae60";
           } else {
-            if (!qrCreated) {
-              const url = window.location.href;
-              if (typeof QRCode !== 'undefined') {
-                new QRCode(qrcodeDiv, {
-                  text: url,
-                  width: 200,
-                  height: 200,
-                  colorDark: "#2c3e50",
-                  colorLight: "#ffffff",
-                  correctLevel: QRCode.CorrectLevel.H
-                });
+            if(!qrCreated){
+              const url=window.location.href;
+              if(typeof QRCode!=='undefined'){
+                new QRCode(qrcodeDiv,{text:url,width:200,height:200,colorDark:"#2c3e50",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});
               } else {
-                qrcodeDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}">`;
+                qrcodeDiv.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}" style="width:200px;height:200px;">`;
               }
-              qrCreated = true;
+              qrCreated=true;
             }
-            qrDisplay.style.display = "block";
-            generateBtn.innerHTML = "❌ شاردنەوەی QR Code";
-            generateBtn.className = "btn-danger";
+            qrDisplay.style.display="block";
+            generateBtn.innerHTML="❌ شاردنەوەی QR Code";
+            generateBtn.style.background="#e74c3c";
           }
         });
       }
-      
-      if (downloadBtn) {
-        downloadBtn.addEventListener("click", function() {
-          const qrImg = qrcodeDiv.querySelector("img");
-          const canvas = qrcodeDiv.querySelector("canvas");
-          
-          if (canvas) {
-            canvas.toBlob(function(blob) {
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement("a");
-              link.href = url;
-              link.download = "clinic-qrcode.png";
-              link.click();
-              URL.revokeObjectURL(url);
-            });
-          } else if (qrImg) {
+      if(downloadBtn){
+        downloadBtn.addEventListener("click",function(){
+          const qrImg=qrcodeDiv.querySelector("img");
+          const c=qrcodeDiv.querySelector("canvas");
+
+          function saveBlob(blob){
+            const burl=URL.createObjectURL(blob);
+            const l=document.createElement("a");
+            l.href=burl;l.download="clinic-qrcode.png";
+            document.body.appendChild(l);l.click();
+            setTimeout(function(){document.body.removeChild(l);URL.revokeObjectURL(burl);},1000);
+          }
+
+          if(c){
+            // QRCode.js — canvas بەکارهێنراوە
+            c.toBlob(function(blob){if(blob)saveBlob(blob);},'image/png');
+          } else if(qrImg){
+            // API img — fetch بکە بە blob
             fetch(qrImg.src)
-              .then(r => r.blob())
-              .then(blob => {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = "clinic-qrcode.png";
-                link.click();
-                URL.revokeObjectURL(url);
+              .then(function(r){return r.blob();})
+              .then(function(blob){saveBlob(blob);})
+              .catch(function(){
+                // fallback: تازە پەنجەرە بکە
+                window.open(qrImg.src,"_blank");
               });
+          } else {
+            alert("تکایە یەکەم جار QR Code پیشان بدە");
           }
         });
       }
     });
-    
-    // Observe admin section
-    const adminEl = document.getElementById('adminSection');
-    if (adminEl) {
-      new MutationObserver(syncAdminNav).observe(adminEl, { attributes: true, attributeFilter: ['style'] });
+  </script>
+  <script type="module" src="app.js"></script>
+
+  <!-- Clinic fixes: theme, admin nav, save validation -->
+  <script>
+
+    // ── THEME: self-contained toggle (doesn't depend on app.js export) ─────────
+    function doToggleTheme() {
+      const isDark = document.body.classList.contains('dark-mode');
+      const newTheme = isDark ? 'light' : 'dark';
+
+      // If app.js has exposed toggleTheme on window, use it (it handles currentTheme variable)
+      if (typeof window.toggleTheme === 'function') {
+        window.toggleTheme();
+        return; // syncThemeUI will fire via MutationObserver on body.class change
+      }
+
+      // Fallback: do it ourselves (mirrors app.js applyTheme logic exactly)
+      if (newTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+      localStorage.setItem('theme', newTheme);
+      syncThemeUI();
     }
+
+    function syncThemeUI() {
+      const isDark = document.body.classList.contains('dark-mode');
+      const sideBtn = document.getElementById('themeSidebarBtn');
+      const topBtn  = document.getElementById('themeToggle');
+      if (sideBtn) sideBtn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+      if (topBtn)  topBtn.textContent  = isDark ? '☀️' : '🌙';
+    }
+
+    // Watch body classList — syncs icons whenever app.js also changes theme
+    new MutationObserver(syncThemeUI)
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    // Wire buttons on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Apply saved theme immediately (before app.js loads)
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') document.body.classList.add('dark-mode');
+      syncThemeUI();
+
+      // #themeToggle is wired by app.js automatically (it looks for this id)
+      // We only need to wire themeSidebarBtn ourselves
+      const sideBtn = document.getElementById('themeSidebarBtn');
+      if (sideBtn) sideBtn.addEventListener('click', doToggleTheme);
+    });
+
+    // ── ADMIN NAV: watch adminSection style reliably ─────────────────────────
+    function syncAdminNav() {
+      const a = document.getElementById('adminSection');
+      const isAdmin = a && a.style.display !== 'none';
+      ['adminNavLabel','adminNavItem','searchNavItem','qrNavItem','backupNavItem'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isAdmin ? '' : 'none';
+      });
+    }
+
+    // Watch adminSection style attribute
+    document.addEventListener('DOMContentLoaded', function() {
+      const adminEl = document.getElementById('adminSection');
+      if (adminEl) {
+        new MutationObserver(syncAdminNav)
+          .observe(adminEl, { attributes: true, attributeFilter: ['style'] });
+      }
+      // Watch loginPage — when it hides (login), re-check admin after delay
+      const loginEl = document.getElementById('loginPage');
+      if (loginEl) {
+        new MutationObserver(function() {
+          setTimeout(syncAdminNav, 600);
+          setTimeout(syncAdminNav, 1500); // double check after Firebase responds
+        }).observe(loginEl, { attributes: true, attributeFilter: ['style'] });
+      }
+      // Also watch dashboard visibility
+      const dashEl = document.getElementById('dashboard');
+      if (dashEl) {
+        new MutationObserver(function() {
+          setTimeout(syncAdminNav, 600);
+          setTimeout(syncAdminNav, 1500);
+        }).observe(dashEl, { attributes: true, attributeFilter: ['style'] });
+      }
+    });
+
+    // ── USERNAME SYNC ─────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+      const uEl = document.getElementById('currentUserName');
+      if (uEl) {
+        new MutationObserver(function() {
+          const sn = document.getElementById('sidebarUserName');
+          if (sn) sn.textContent = uEl.textContent;
+        }).observe(uEl, { childList: true, subtree: true, characterData: true });
+      }
+    });
+
+    // ── SAVE VALIDATION: future date warning + zero count check ──────────────
+    document.addEventListener('DOMContentLoaded', function() {
+
+      // Show warning banner near save button if date is future
+      function checkDateWarning() {
+        const dateInput = document.getElementById('entryDate');
+        let warn = document.getElementById('futureDateWarn');
+        if (!dateInput) return;
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const parts = dateInput.value.split('-');
+        const chosen = new Date(parts[0], parts[1]-1, parts[2]);
+        if (dateInput.value && chosen > today) {
+          if (!warn) {
+            warn = document.createElement('p');
+            warn.id = 'futureDateWarn';
+            warn.style.cssText = 'color:#e67e22;font-weight:700;font-size:13px;margin-top:6px;background:#fff8e1;padding:8px 12px;border-radius:8px;border:1px solid #f0c040;';
+            warn.textContent = '⚠️ ئاگادارکردنەوە: ڕێکەوتەکە بۆ داهاتوو دانراوە!';
+            dateInput.insertAdjacentElement('afterend', warn);
+          }
+          warn.style.display = 'block';
+        } else {
+          if (warn) warn.style.display = 'none';
+        }
+      }
+
+      const dateInp = document.getElementById('entryDate');
+      if (dateInp) dateInp.addEventListener('change', checkDateWarning);
+
+      // Intercept + buttons to show save button highlight after first tap
+      ['patientCountAdult','patientCountChild'].forEach(function(id) {
+        const inp = document.getElementById(id);
+        if (inp) {
+          inp.addEventListener('input', function() {
+            const saveBtn = document.getElementById('btnSaveEntry');
+            if (saveBtn && (parseInt(inp.value)||0) > 0) {
+              saveBtn.style.boxShadow = '0 0 0 3px rgba(102,126,234,0.5)';
+            }
+          });
+        }
+      });
+
+      // Override save button to validate before allowing app.js to save
+      const saveBtn = document.getElementById('btnSaveEntry');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function(e) {
+          const adult = parseInt(document.getElementById('patientCountAdult')?.value) || 0;
+          const child = parseInt(document.getElementById('patientCountChild')?.value) || 0;
+
+          if (adult === 0 && child === 0) {
+            e.stopImmediatePropagation(); // block app.js handler
+            let msg = document.getElementById('statusMsg');
+            if (msg) {
+              msg.style.color = '#e74c3c';
+              msg.textContent = '⚠️ تکایە ژمارەی نەخۆش داخڵ بکە پێش پاشکەوتکردن!';
+              setTimeout(function(){ if(msg.textContent.includes('داخڵ بکە')) msg.textContent=''; }, 3000);
+            }
+            return false;
+          }
+
+          const dateInput = document.getElementById('entryDate');
+          if (dateInput && dateInput.value) {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const p = dateInput.value.split('-');
+            const chosen = new Date(p[0], p[1]-1, p[2]);
+            if (chosen > today) {
+              e.stopImmediatePropagation();
+              let msg = document.getElementById('statusMsg');
+              if (msg) {
+                msg.style.color = '#e74c3c';
+                msg.textContent = '⛔ ناتوانیت بۆ ڕێکەوتی داهاتوو تۆمار بکەیت!';
+                setTimeout(function(){ if(msg.textContent.includes('داهاتوو')) msg.textContent=''; }, 3000);
+              }
+              return false;
+            }
+          }
+        }, true); // capture phase — runs before app.js
+      }
+    });
+
   </script>
 </body>
 </html>
