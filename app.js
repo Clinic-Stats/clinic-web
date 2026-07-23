@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, setDoc, deleteDoc, enableIndexedDbPersistence, orderBy } 
+import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc, setDoc, deleteDoc, enableIndexedDbPersistence, orderBy, writeBatch } 
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
@@ -345,9 +345,12 @@ window.showUserManagement = async function() {
   
   let usersHtml = `
     <div style="direction: rtl; max-height: 70vh; overflow-y: auto;">
-      <div style="margin-bottom: 20px;">
-        <button onclick="showAddUserForm()" style="background: #27ae60; width: 100%; padding: 12px; font-size: 16px; margin:0;">
+      <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="showAddUserForm()" style="background: #27ae60; flex: 1; min-width: 200px; padding: 12px; font-size: 16px; margin:0;">
           ➕ زیادکردنی بەکارهێنەری نوێ
+        </button>
+        <button onclick="showRenameStaffForm()" style="background: #9b59b6; flex: 1; min-width: 200px; padding: 12px; font-size: 16px; margin:0;">
+          ✏️ گۆڕینی ناوی کارمەند لە تۆمارەکان
         </button>
       </div>
       <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -657,6 +660,118 @@ window.updateUserEmail = async function(oldEmail) {
     } else {
       msgEl.textContent = '❌ هەڵە: ' + error.message;
     }
+    msgEl.style.color = 'red';
+  } finally {
+    hideLoading();
+  }
+};
+
+// ============================================
+// RENAME STAFF IN ALL EXISTING ENTRIES
+// (ناوی کۆنی کارمەند لە هەموو تۆمارە پێشووەکان دەگۆڕێت
+//  بەبێ سڕینەوەی هیچ تۆمارێک — تەنها فیلدی staff نوێ دەکرێتەوە)
+// ============================================
+window.showRenameStaffForm = function() {
+  window.closeModal();
+
+  const staffOptions = allStaffList.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  const formHtml = `
+    <div style="direction: rtl;">
+      <h3 style="margin-bottom: 15px;">✏️ گۆڕینی ناوی کارمەند لە تۆمارەکان</h3>
+      <p style="margin-bottom: 15px; font-size: 13px; color: #666;">
+        ئەمە تەنها ناوی کارمەند لەناو هەموو تۆمارە کۆنەکاندا دەگۆڕێت. هیچ تۆمارێک ناسڕدرێتەوە.
+      </p>
+
+      <label>ناوی کۆن (وەک نووسراوە لە تۆمارەکان):</label>
+      <select id="renameOldStaff" style="width:100%; padding:10px; margin-bottom:15px; border-radius:8px; border:1px solid #ccc;">
+        <option value="">-- هەڵبژاردنی ناوی کۆن --</option>
+        ${staffOptions}
+      </select>
+
+      <label>ناوی نوێ:</label>
+      <input type="text" id="renameNewStaff" placeholder="نموونە: nyanaziz" style="width:100%; padding:10px; margin-bottom:5px; border-radius:8px; border:1px solid #ccc;">
+      <p style="font-size:12px; color:#666; margin-bottom:15px;">🔹 باشترە بە پیتی بچووک بنووسیت، وەک خۆی لە entries دا هەڵدەگیرێت (بۆ نموونە nyanaziz)</p>
+
+      <div style="display:flex; gap:10px;">
+        <button onclick="renameStaffEverywhere()" style="background:#9b59b6; flex:1; margin:0;">✔️ گۆڕین</button>
+        <button onclick="window.closeModal()" style="background:#95a5a6; flex:1; margin:0;">❌ پاشگەزبوونەوە</button>
+      </div>
+      <p id="renameStaffMsg" style="margin-top:10px; font-size:13px;"></p>
+    </div>
+  `;
+
+  window.showModal('✏️ گۆڕینی ناوی کارمەند', formHtml);
+};
+
+window.renameStaffEverywhere = async function() {
+  const oldName = document.getElementById('renameOldStaff')?.value;
+  let newName = document.getElementById('renameNewStaff')?.value.trim();
+  const msgEl = document.getElementById('renameStaffMsg');
+
+  if (!oldName) {
+    msgEl.textContent = '⚠️ تکایە ناوی کۆن هەڵبژێرە';
+    msgEl.style.color = 'red';
+    return;
+  }
+  if (!newName) {
+    msgEl.textContent = '⚠️ تکایە ناوی نوێ بنووسە';
+    msgEl.style.color = 'red';
+    return;
+  }
+  newName = newName.toLowerCase();
+
+  if (newName === oldName) {
+    msgEl.textContent = '⚠️ ناوی نوێ وەک ناوی کۆن نابێت';
+    msgEl.style.color = 'red';
+    return;
+  }
+
+  if (!confirm(`دڵنیایت لە گۆڕینی هەموو تۆمارەکانی "${oldName}" بۆ "${newName}"؟\nهیچ تۆمارێک ناسڕدرێتەوە، تەنها ناوەکە دەگۆڕدرێت.`)) return;
+
+  msgEl.textContent = '⏳ چاوەڕێ بکە... تۆمارەکان دەگۆڕدرێن';
+  msgEl.style.color = 'orange';
+  showLoading();
+
+  try {
+    const snap = await getDocs(query(
+      collection(db, "entries"),
+      where("staff", "==", oldName)
+    ));
+
+    if (snap.empty) {
+      msgEl.textContent = `⚠️ هیچ تۆمارێک نەدۆزرایەوە بۆ "${oldName}"`;
+      msgEl.style.color = 'orange';
+      hideLoading();
+      return;
+    }
+
+    // Firestore batch نووسین لانی زۆر ٥٠٠ نووسین لە هەر batch-دا ڕێگەپێدراوە
+    const docs = snap.docs;
+    const chunkSize = 450;
+    let updatedCount = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      const chunk = docs.slice(i, i + chunkSize);
+      chunk.forEach(d => {
+        batch.update(d.ref, { staff: newName });
+      });
+      await batch.commit();
+      updatedCount += chunk.length;
+    }
+
+    msgEl.textContent = `✅ ${updatedCount} تۆمار گۆڕدرا لە "${oldName}" بۆ "${newName}"!`;
+    msgEl.style.color = 'green';
+
+    await loadStaffList();
+
+    setTimeout(() => {
+      window.closeModal();
+    }, 2000);
+  } catch (error) {
+    console.error('Error renaming staff:', error);
+    msgEl.textContent = '❌ هەڵە: ' + error.message;
     msgEl.style.color = 'red';
   } finally {
     hideLoading();
