@@ -428,7 +428,7 @@ window.showAddUserForm = function() {
 // CREATE NEW USER — بە secondary app بۆ ئەوەی session ی ئەدمین نەگۆڕێت
 // ============================================
 window.createNewUser = async function() {
-  let email = document.getElementById('newUserEmail')?.value.trim();
+  let email = document.getElementById('newUserEmail')?.value.trim().toLowerCase();
   const password = document.getElementById('newUserPassword')?.value;
   const role = document.getElementById('newUserRole')?.value;
   const msgEl = document.getElementById('addUserMsg');
@@ -588,7 +588,7 @@ window.showChangeEmailForm = function(oldEmail) {
 //           بێ گۆڕینی session ی ئەدمین
 // ============================================
 window.updateUserEmail = async function(oldEmail) {
-  let newEmailInput = document.getElementById('newUserEmailAddress')?.value.trim();
+  let newEmailInput = document.getElementById('newUserEmailAddress')?.value.trim().toLowerCase();
   const newPassword = document.getElementById('newUserEmailPassword')?.value;
   const msgEl = document.getElementById('changeEmailMsg');
   
